@@ -1,0 +1,106 @@
+{
+  "app": {
+    "name": "DataManip",
+    "title": "DataManip - Outil de Manipulation de Données",
+    "description": "Un logiciel open-source de manipulation de données pour les sciences expérimentales"
+  },
+  "menu": {
+    "file": "&Fichier",
+    "edit": "&Édition",
+    "view": "&Affichage",
+    "tools": "&Outils",
+    "help": "&Aide"
+  },
+  "file": {
+    "new": "&Nouveau",
+    "new_tip": "Créer un nouveau fichier",
+    "open": "&Ouvrir...",
+    "open_tip": "Ouvrir un fichier existant",
+    "save": "&Enregistrer",
+    "save_tip": "Enregistrer le fichier actuel",
+    "save_as": "Enregistrer &sous...",
+    "save_as_tip": "Enregistrer le fichier sous un nouveau nom",
+    "exit": "&Quitter",
+    "exit_tip": "Quitter l'application"
+  },
+  "edit": {
+    "undo": "&Annuler",
+    "undo_tip": "Annuler la dernière action",
+    "redo": "&Rétablir",
+    "redo_tip": "Rétablir la dernière action annulée",
+    "cut": "Co&uper",
+    "cut_tip": "Couper la sélection",
+    "copy": "&Copier",
+    "copy_tip": "Copier la sélection",
+    "paste": "C&oller",
+    "paste_tip": "Coller depuis le presse-papiers",
+    "preferences": "&Préférences...",
+    "preferences_tip": "Configurer les paramètres de l'application"
+  },
+  "view": {
+    "zoom_in": "Zoom &Avant",
+    "zoom_in_tip": "Agrandir",
+    "zoom_out": "Zoom A&rrière",
+    "zoom_out_tip": "Rétrécir",
+    "reset_zoom": "&Réinitialiser le Zoom",
+    "reset_zoom_tip": "Réinitialiser le zoom par défaut"
+  },
+  "tools": {
+    "data_analysis": "&Analyse de Données",
+    "data_analysis_tip": "Ouvrir les outils d'analyse de données",
+    "visualization": "&Visualisation",
+    "visualization_tip": "Ouvrir les outils de visualisation"
+  },
+  "help": {
+    "documentation": "&Documentation",
+    "documentation_tip": "Voir la documentation",
+    "about": "À &propos de DataManip",
+    "about_tip": "À propos de cette application"
+  },
+  "welcome": {
+    "title": "Bienvenue dans DataManip",
+    "description": "Un logiciel open-source de manipulation de données pour les sciences expérimentales"
+  },
+  "status": {
+    "ready": "Prêt",
+    "new_file": "Nouveau fichier créé",
+    "open_file": "Dialogue d'ouverture de fichier",
+    "file_saved": "Fichier enregistré",
+    "save_as": "Dialogue enregistrer sous",
+    "undo": "Annuler",
+    "redo": "Rétablir",
+    "cut": "Couper",
+    "copy": "Copier",
+    "paste": "Coller",
+    "preferences": "Préférences",
+    "zoom_in": "Zoom Avant",
+    "zoom_out": "Zoom Arrière",
+    "reset_zoom": "Réinitialiser le Zoom",
+    "data_analysis": "Analyse de Données",
+    "visualization": "Visualisation",
+    "documentation": "Documentation"
+  },
+  "about": {
+    "title": "À propos de DataManip",
+    "version": "Version",
+    "description": "Un logiciel open-source de manipulation de données conçu pour les sciences expérimentales.\n\nDéveloppé avec PySide6 et Python."
+  },
+  "language": {
+    "dialog_title": "Sélection de la Langue",
+    "select_language": "Sélectionner la langue :",
+    "language": "Langue :",
+    "restart_required": "La langue sera appliquée immédiatement à l'interface.",
+    "success_title": "Langue Modifiée",
+    "success_message": "La langue a été modifiée avec succès.",
+    "error_title": "Erreur",
+    "error_message": "Échec du changement de langue. Veuillez réessayer."
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "Annuler",
+    "apply": "Appliquer",
+    "close": "Fermer",
+    "yes": "Oui",
+    "no": "Non"
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "app": {
+    "name": "DataManip",
+    "title": "DataManip - Data Manipulation Tool",
+    "description": "An open-source data manipulation software for experimental sciences"
+  },
+  "menu": {
+    "file": "&File",
+    "edit": "&Edit",
+    "view": "&View",
+    "tools": "&Tools",
+    "help": "&Help"
+  },
+  "file": {
+    "new": "&New",
+    "new_tip": "Create a new file",
+    "open": "&Open...",
+    "open_tip": "Open an existing file",
+    "save": "&Save",
+    "save_tip": "Save the current file",
+    "save_as": "Save &As...",
+    "save_as_tip": "Save the file with a new name",
+    "exit": "E&xit",
+    "exit_tip": "Exit the application"
+  },
+  "edit": {
+    "undo": "&Undo",
+    "undo_tip": "Undo the last action",
+    "redo": "&Redo",
+    "redo_tip": "Redo the last undone action",
+    "cut": "Cu&t",
+    "cut_tip": "Cut the selection",
+    "copy": "&Copy",
+    "copy_tip": "Copy the selection",
+    "paste": "&Paste",
+    "paste_tip": "Paste from clipboard",
+    "preferences": "&Preferences...",
+    "preferences_tip": "Configure application settings"
+  },
+  "view": {
+    "zoom_in": "Zoom &In",
+    "zoom_in_tip": "Zoom in",
+    "zoom_out": "Zoom &Out",
+    "zoom_out_tip": "Zoom out",
+    "reset_zoom": "&Reset Zoom",
+    "reset_zoom_tip": "Reset zoom to default"
+  },
+  "tools": {
+    "data_analysis": "&Data Analysis",
+    "data_analysis_tip": "Open data analysis tools",
+    "visualization": "&Visualization",
+    "visualization_tip": "Open visualization tools"
+  },
+  "help": {
+    "documentation": "&Documentation",
+    "documentation_tip": "View documentation",
+    "about": "&About DataManip",
+    "about_tip": "About this application"
+  },
+  "welcome": {
+    "title": "Welcome to DataManip",
+    "description": "An open-source data manipulation software for experimental sciences"
+  },
+  "status": {
+    "ready": "Ready",
+    "new_file": "New file created",
+    "open_file": "Open file dialog",
+    "file_saved": "File saved",
+    "save_as": "Save as dialog",
+    "undo": "Undo",
+    "redo": "Redo",
+    "cut": "Cut",
+    "copy": "Copy",
+    "paste": "Paste",
+    "preferences": "Preferences",
+    "zoom_in": "Zoom In",
+    "zoom_out": "Zoom Out",
+    "reset_zoom": "Reset Zoom",
+    "data_analysis": "Data Analysis",
+    "visualization": "Visualization",
+    "documentation": "Documentation"
+  },
+  "about": {
+    "title": "About DataManip",
+    "version": "Version",
+    "description": "An open-source data manipulation software designed for experimental sciences.\n\nBuilt with PySide6 and Python."
+  },
+  "language": {
+    "dialog_title": "Language Selection",
+    "select_language": "Select Language:",
+    "language": "Language:",
+    "restart_required": "The language will be applied immediately to the interface.",
+    "success_title": "Language Changed",
+    "success_message": "Language has been changed successfully.",
+    "error_title": "Error",
+    "error_message": "Failed to change language. Please try again."
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "apply": "Apply",
+    "close": "Close",
+    "yes": "Yes",
+    "no": "No"
+  }
+}
