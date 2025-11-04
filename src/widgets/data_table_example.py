@@ -7,7 +7,7 @@ from widgets.translatable import TranslatableMixin
 from utils.lang import get_lang_manager
 
 
-class DataTableWidget(QWidget, TranslatableMixin):
+class DataTableExample(QWidget, TranslatableMixin):
     """
     Example widget that contains data and translatable UI elements.
     The data is preserved when language changes, only UI text is updated.

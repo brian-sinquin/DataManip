@@ -102,5 +102,15 @@
     "close": "Fermer",
     "yes": "Oui",
     "no": "Non"
+  },
+  "tabs": {
+    "visualization": "Visualisation",
+    "data_table": "Tableau de Données"
+  },
+  "data_table": {
+    "title": "Exemple de Tableau de Données",
+    "column1": "Nom",
+    "column2": "Valeur",
+    "column3": "Statut"
   }
 }

@@ -4,7 +4,9 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
     QVBoxLayout,
+    QHBoxLayout,
     QLabel,
+    QTabWidget,
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QKeySequence
@@ -13,6 +15,8 @@ from . import message_boxes as mb
 from .language_dialog import LanguageDialog
 from utils.lang import get_lang_manager
 from widgets.translatable import TranslatableLabel
+from widgets.matplotlib_widget import MatplotlibWidget
+from widgets.data_table_example import DataTableExample
 
 class MainWindow(QMainWindow):
     """
@@ -71,8 +75,18 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.description_label)
         self.translatable_widgets.append(self.description_label)
 
-        # Add stretch to center content
-        layout.addStretch()
+        # Create tab widget
+        self.tab_widget = QTabWidget()
+        layout.addWidget(self.tab_widget)
+        
+        # Add matplotlib plot tab
+        self.plot_widget = MatplotlibWidget()
+        self.tab_widget.addTab(self.plot_widget, "Visualization")
+        
+        # Add data table tab
+        self.data_table = DataTableExample()
+        self.tab_widget.addTab(self.data_table, "Data Table")
+        self.translatable_widgets.append(self.data_table)
 
         # Create menu bar
         self._create_menu_bar()
@@ -294,6 +308,10 @@ class MainWindow(QMainWindow):
         self.menuBar().clear()
         self._create_menu_bar()
         
+        # Update tab names
+        self.tab_widget.setTabText(0, self.lang.get("tabs.visualization", "Visualization"))
+        self.tab_widget.setTabText(1, self.lang.get("tabs.data_table", "Data Table"))
+        
         # Refresh all translatable widgets (this preserves their data!)
         for widget in self.translatable_widgets:
             if hasattr(widget, 'refresh_text'):
@@ -322,10 +340,23 @@ class MainWindow(QMainWindow):
     # Tools Menu Actions
     def data_analysis(self):
         """Open data analysis tools."""
+        # Example: Update plot with new data
+        import numpy as np
+        x = np.linspace(0, 20, 200)
+        y = np.sin(x) * np.exp(-x/10)
+        self.plot_widget.plot_data(x, y, xlabel='Time', ylabel='Amplitude', 
+                                    title='Data Analysis Example')
         self.statusBar().showMessage(self.lang.get("status.data_analysis"), 2000)
 
     def visualization(self):
         """Open visualization tools."""
+        # Example: Show multiple plots
+        import numpy as np
+        x = np.linspace(0, 10, 100)
+        y_list = [np.sin(x), np.cos(x), np.sin(2*x)]
+        self.plot_widget.plot_data(x, y_list, xlabel='X', ylabel='Y',
+                                    title='Visualization Example',
+                                    labels=['sin(x)', 'cos(x)', 'sin(2x)'])
         self.statusBar().showMessage(self.lang.get("status.visualization"), 2000)
 
     # Help Menu Actions

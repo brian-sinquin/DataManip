@@ -102,5 +102,15 @@
     "close": "Close",
     "yes": "Yes",
     "no": "No"
+  },
+  "tabs": {
+    "visualization": "Visualization",
+    "data_table": "Data Table"
+  },
+  "data_table": {
+    "title": "Example Data Table",
+    "column1": "Name",
+    "column2": "Value",
+    "column3": "Status"
   }
 }
