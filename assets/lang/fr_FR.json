@@ -83,7 +83,13 @@
   "about": {
     "title": "À propos de DataManip",
     "version": "Version",
-    "description": "Un logiciel open-source de manipulation de données conçu pour les sciences expérimentales.\n\nDéveloppé avec PySide6 et Python."
+    "description": "Un logiciel open-source de manipulation de données conçu pour les sciences expérimentales.\n\nDéveloppé avec PySide6 et Python.",
+    "contributors": "Contributeurs",
+    "license": "Licence",
+    "website": "Site Web",
+    "github": "Dépôt GitHub",
+    "copyright": "Copyright © 2025 Brian Sinquin",
+    "license_text": "Licence MIT"
   },
   "language": {
     "dialog_title": "Sélection de la Langue",
@@ -112,5 +118,17 @@
     "column1": "Nom",
     "column2": "Valeur",
     "column3": "Statut"
+  },
+  "preferences": {
+    "title": "Préférences de Langue",
+    "language_settings": "Paramètres de Langue",
+    "language_info": "Les changements seront appliqués immédiatement à l'interface.",
+    "restart_info": "Les changements seront appliqués après le redémarrage de l'application.",
+    "restart_title": "Langue Modifiée",
+    "restart_message": "Votre préférence de langue a été sauvegardée.\n\nVeuillez redémarrer l'application pour appliquer la nouvelle langue.",
+    "success_title": "Paramètres Appliqués",
+    "success_message": "Votre préférence de langue a été sauvegardée avec succès.",
+    "error_title": "Erreur",
+    "error_message": "Échec de la sauvegarde des préférences"
   }
 }

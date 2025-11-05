@@ -83,7 +83,13 @@
   "about": {
     "title": "About DataManip",
     "version": "Version",
-    "description": "An open-source data manipulation software designed for experimental sciences.\n\nBuilt with PySide6 and Python."
+    "description": "An open-source data manipulation software designed for experimental sciences.\n\nBuilt with PySide6 and Python.",
+    "contributors": "Contributors",
+    "license": "License",
+    "website": "Website",
+    "github": "GitHub Repository",
+    "copyright": "Copyright © 2025 Brian Sinquin",
+    "license_text": "MIT License"
   },
   "language": {
     "dialog_title": "Language Selection",
@@ -112,5 +118,17 @@
     "column1": "Name",
     "column2": "Value",
     "column3": "Status"
+  },
+  "preferences": {
+    "title": "Language Preferences",
+    "language_settings": "Language Settings",
+    "language_info": "Changes will be applied immediately to the interface.",
+    "restart_info": "Changes will be applied after restarting the application.",
+    "restart_title": "Language Changed",
+    "restart_message": "Language preference has been saved.\n\nPlease restart the application to apply the new language.",
+    "success_title": "Settings Applied",
+    "success_message": "Your language preference has been saved successfully.",
+    "error_title": "Error",
+    "error_message": "Failed to save preferences"
   }
 }

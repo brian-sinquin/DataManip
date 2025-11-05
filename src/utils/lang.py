@@ -3,10 +3,13 @@
 import json
 from pathlib import Path
 from typing import Dict, Any, Optional
+import threading
+
+from .paths import LANG_DIR
 
 
 class LanguageManager:
-    """Manages application translations and language switching."""
+    """Manages application translations - loads language once at startup."""
 
     def __init__(self, lang_code: str = "en_US"):
         """
@@ -15,10 +18,11 @@ class LanguageManager:
         Args:
             lang_code: Language code (e.g., 'en_US', 'fr_FR')
         """
+        self._lock = threading.Lock()
         self.lang_code = lang_code
         self.translations: Dict[str, Any] = {}
-        # Go up from src/utils to project root, then to assets/lang
-        self.lang_dir = Path(__file__).parent.parent.parent / "assets" / "lang"
+        # Use centralized path definition
+        self.lang_dir = LANG_DIR
         self.load_language(lang_code)
 
     def load_language(self, lang_code: str) -> bool:
@@ -31,24 +35,25 @@ class LanguageManager:
         Returns:
             True if successful, False otherwise
         """
-        lang_file = self.lang_dir / f"{lang_code}.json"
-        
-        if not lang_file.exists():
-            print(f"Language file not found: {lang_file}")
-            # Try to load English as fallback
-            lang_file = self.lang_dir / "en_US.json"
+        with self._lock:
+            lang_file = self.lang_dir / f"{lang_code}.json"
+            
             if not lang_file.exists():
-                print("Fallback language (en_US) not found!")
+                print(f"Language file not found: {lang_file}")
+                # Try to load English as fallback
+                lang_file = self.lang_dir / "en_US.json"
+                if not lang_file.exists():
+                    print("Fallback language (en_US) not found!")
+                    return False
+            
+            try:
+                with open(lang_file, 'r', encoding='utf-8') as f:
+                    self.translations = json.load(f)
+                self.lang_code = lang_code
+                return True
+            except Exception as e:
+                print(f"Error loading language file: {e}")
                 return False
-        
-        try:
-            with open(lang_file, 'r', encoding='utf-8') as f:
-                self.translations = json.load(f)
-            self.lang_code = lang_code
-            return True
-        except Exception as e:
-            print(f"Error loading language file: {e}")
-            return False
 
     def get(self, key: str, default: str = "") -> str:
         """
@@ -61,16 +66,17 @@ class LanguageManager:
         Returns:
             Translated string or default value
         """
-        keys = key.split('.')
-        value = self.translations
-        
-        for k in keys:
-            if isinstance(value, dict) and k in value:
-                value = value[k]
-            else:
-                return default or key
-        
-        return str(value) if value is not None else default
+        with self._lock:
+            keys = key.split('.')
+            value = self.translations
+            
+            for k in keys:
+                if isinstance(value, dict) and k in value:
+                    value = value[k]
+                else:
+                    return default or key
+            
+            return str(value) if value is not None else default
 
     def get_available_languages(self) -> list:
         """
@@ -87,21 +93,10 @@ class LanguageManager:
             languages.append(file.stem)
         return sorted(languages)
 
-    def switch_language(self, lang_code: str) -> bool:
-        """
-        Switch to a different language.
-        
-        Args:
-            lang_code: Language code to switch to
-            
-        Returns:
-            True if successful, False otherwise
-        """
-        return self.load_language(lang_code)
-
 
 # Global language manager instance
 _lang_manager: Optional[LanguageManager] = None
+_lang_manager_lock = threading.Lock()
 
 
 def init_language(lang_code: str = "en_US") -> LanguageManager:
@@ -115,8 +110,9 @@ def init_language(lang_code: str = "en_US") -> LanguageManager:
         The initialized language manager
     """
     global _lang_manager
-    _lang_manager = LanguageManager(lang_code)
-    return _lang_manager
+    with _lang_manager_lock:
+        _lang_manager = LanguageManager(lang_code)
+        return _lang_manager
 
 
 def get_lang_manager() -> LanguageManager:
@@ -129,9 +125,10 @@ def get_lang_manager() -> LanguageManager:
     Raises:
         RuntimeError: If language manager not initialized
     """
-    if _lang_manager is None:
-        raise RuntimeError("Language manager not initialized. Call init_language() first.")
-    return _lang_manager
+    with _lang_manager_lock:
+        if _lang_manager is None:
+            raise RuntimeError("Language manager not initialized. Call init_language() first.")
+        return _lang_manager
 
 
 def tr(key: str, default: str = "") -> str:
