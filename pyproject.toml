@@ -11,7 +11,10 @@ requires-python = ">=3.12"
 dependencies = [
     "matplotlib>=3.10.7",
     "numpy>=2.3.4",
+    "pint>=0.25.2",
     "pyside6>=6.10.0",
+    "scipy>=1.16.3",
+    "sympy>=1.14.0",
 ]
 
 [project.scripts]
