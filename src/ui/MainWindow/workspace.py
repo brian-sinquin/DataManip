@@ -1,11 +1,13 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QTableWidgetItem, QMessageBox
+    QWidget, QVBoxLayout, QTableWidgetItem, QMessageBox, QTabWidget, QLabel
 )
 from PySide6.QtCore import Qt
 
 from utils.lang import get_lang_manager, tr
+from utils.example_data import load_projectile_motion
 from widgets.AdvancedDataTableWidget.advanced_datatable import AdvancedDataTableWidget, AdvancedColumnType, AdvancedColumnDataType
-from widgets.AdvancedDataTableWidget.toolbar import DataTableToolbar
+from widgets.AdvancedDataTablePlotWidget import AdvancedDataTablePlotWidget
+from widgets.AdvancedDataTableStatisticsWidget import AdvancedDataTableStatisticsWidget
 
 class Workspace(QWidget):
     """Workspace area for data manipulation tasks.
@@ -41,18 +43,45 @@ class Workspace(QWidget):
         self._setup_initial_data()
     
     def _setup_ui(self):
-        """Setup the UI for the workspace."""
+        """Setup the UI for the workspace with tabs."""
         layout = QVBoxLayout()
         self.setLayout(layout)
         
-        # Create the advanced data table
+        # Create tab widget
+        self.tab_widget = QTabWidget()
+        layout.addWidget(self.tab_widget)
+        
+        # Create Data Table tab
+        self.data_tab = QWidget()
+        data_tab_layout = QVBoxLayout()
+        self.data_tab.setLayout(data_tab_layout)
+        
+        # Create the advanced data table (without toolbar)
         self.table = AdvancedDataTableWidget()
+        data_tab_layout.addWidget(self.table)
         
-        # Create the toolbar for the table
-        self.toolbar = DataTableToolbar(self.table)
-        layout.addWidget(self.toolbar)
+        # Create Plotting tab with the plot widget
+        self.plot_tab = QWidget()
+        plot_tab_layout = QVBoxLayout()
+        self.plot_tab.setLayout(plot_tab_layout)
         
-        layout.addWidget(self.table)
+        # Create the plot widget (will be connected after table setup)
+        self.plot_widget = AdvancedDataTablePlotWidget()
+        plot_tab_layout.addWidget(self.plot_widget)
+        
+        # Create Statistics tab
+        self.stats_tab = QWidget()
+        stats_tab_layout = QVBoxLayout()
+        self.stats_tab.setLayout(stats_tab_layout)
+        
+        # Create the statistics widget (will be connected after table setup)
+        self.stats_widget = AdvancedDataTableStatisticsWidget()
+        stats_tab_layout.addWidget(self.stats_widget)
+        
+        # Add tabs to tab widget
+        self.tab_widget.addTab(self.data_tab, "Data Table")
+        self.tab_widget.addTab(self.plot_tab, "Plotting")
+        self.tab_widget.addTab(self.stats_tab, "Statistics")
     
     def _connect_signals(self):
         """Connect table signals."""
@@ -60,183 +89,53 @@ class Workspace(QWidget):
         self.table.columnAdded.connect(self.on_column_added)
         self.table.columnRemoved.connect(self.on_column_removed)
         self.table.formulaChanged.connect(self.on_formula_changed)
+        
+        # Connect plot widget to datatable
+        self.plot_widget.set_datatable(self.table)
+        
+        # Connect statistics widget to datatable
+        self.stats_widget.set_datatable(self.table)
     
     def _setup_initial_data(self):
-        """Set up initial physics example - Projectile Motion Analysis.
-        
-        This example demonstrates:
-        - Range columns for time values
-        - Calculated columns using formulas
-        - Derivative columns for velocity and acceleration
-        - Unit handling and propagation
-        """
+        """Set up initial physics example - Baseball Trajectory."""
         try:
-            # Clear any existing data
-            self.table.clear()
-            self.table.setRowCount(0)
-            self.table.setColumnCount(0)
-            
-            # Physics parameters for projectile motion
-            # Initial velocity: 20 m/s at 45 degrees
-            # v0 = 20 m/s, angle = 45°, g = 9.81 m/s²
-            
-            # 1. Create time range (0 to 3 seconds, 31 points = 0.1s intervals)
-            self.table.addRangeColumn(
-                header_label="Time",
-                start=0.0,
-                end=3.0,
-                points=31,
-                diminutive="t",
-                unit="s",
-                description="Time elapsed since launch"
-            )
-            
-            # 2. Add horizontal position x = v0 * cos(45°) * t
-            # v0 * cos(45°) ≈ 20 * 0.7071 ≈ 14.142 m/s
-            self.table.addCalculatedColumn(
-                header_label="Position X",
-                formula="14.142 * {t}",
-                diminutive="x",
-                unit="m",
-                description="Horizontal position (constant velocity)",
-                propagate_uncertainty=False
-            )
-            
-            # 3. Add vertical position y = v0 * sin(45°) * t - 0.5 * g * t²
-            # y = 14.142*t - 4.905*t²
-            self.table.addCalculatedColumn(
-                header_label="Position Y",
-                formula="14.142 * {t} - 4.905 * {t}**2",
-                diminutive="y",
-                unit="m",
-                description="Vertical position (with gravity)",
-                propagate_uncertainty=False
-            )
-            
-            # 4. Add total distance from origin
-            self.table.addCalculatedColumn(
-                header_label="Distance",
-                formula="sqrt({x}**2 + {y}**2)",
-                diminutive="r",
-                unit="m",
-                description="Distance from launch point",
-                propagate_uncertainty=False
-            )
-            
-            # 5. Add horizontal velocity (derivative of x with respect to t)
-            # Should be constant ≈ 14.142 m/s
-            x_col_idx = 1  # x is the second column (index 1)
-            t_col_idx = 0  # t is the first column (index 0)
-            self.table.addDerivativeColumn(
-                header_label="Velocity X",
-                numerator_index=x_col_idx,
-                denominator_index=t_col_idx,
-                diminutive="vx",
-                unit="m/s",
-                description="Horizontal velocity component (dx/dt)"
-            )
-            
-            # 6. Add vertical velocity (derivative of y with respect to t)
-            # vy = 14.142 - 9.81*t
-            y_col_idx = 2  # y is the third column (index 2)
-            self.table.addDerivativeColumn(
-                header_label="Velocity Y",
-                numerator_index=y_col_idx,
-                denominator_index=t_col_idx,
-                diminutive="vy",
-                unit="m/s",
-                description="Vertical velocity component (dy/dt)"
-            )
-            
-            # 7. Add total velocity magnitude
-            self.table.addCalculatedColumn(
-                header_label="Velocity",
-                formula="sqrt({vx}**2 + {vy}**2)",
-                diminutive="v",
-                unit="m/s",
-                description="Total velocity magnitude",
-                propagate_uncertainty=False
-            )
-            
-            # 8. Add vertical acceleration (derivative of vy with respect to t)
-            # Should be approximately -9.81 m/s²
-            vy_col_idx = 5  # vy is at index 5
-            self.table.addDerivativeColumn(
-                header_label="Acceleration Y",
-                numerator_index=vy_col_idx,
-                denominator_index=t_col_idx,
-                diminutive="ay",
-                unit="m/s²",
-                description="Vertical acceleration (gravity)"
-            )
-            
-            # 9. Add kinetic energy KE = 0.5 * m * v²
-            # Assuming mass m = 1 kg for simplicity
-            self.table.addCalculatedColumn(
-                header_label="Kinetic Energy",
-                formula="0.5 * 1.0 * {v}**2",
-                diminutive="KE",
-                unit="J",
-                description="Kinetic energy (mass = 1 kg)",
-                propagate_uncertainty=False
-            )
-            
-            # 10. Add potential energy PE = m * g * y
-            # PE = 1.0 * 9.81 * y
-            self.table.addCalculatedColumn(
-                header_label="Potential Energy",
-                formula="9.81 * {y}",
-                diminutive="PE",
-                unit="J",
-                description="Gravitational potential energy",
-                propagate_uncertainty=False
-            )
-            
-            # 11. Add total mechanical energy (should be conserved ≈ 200 J)
-            self.table.addCalculatedColumn(
-                header_label="Total Energy",
-                formula="{KE} + {PE}",
-                diminutive="E",
-                unit="J",
-                description="Total mechanical energy (should be constant)",
-                propagate_uncertainty=False
-            )
-            
-            # Force recalculation of all columns
-            self.table._recalculate_all_calculated_columns()
-            
-            # Resize columns to fit content
-            self.table.resizeColumnsToContents()
+            # Load the projectile motion example from example_data module
+            load_projectile_motion(self.table)
             
             self._show_status_message(
-                "Loaded physics example: Projectile Motion (v0=20 m/s, θ=45°)"
+                "Loaded example: Baseball Trajectory (v0=45 m/s, θ=35°)"
             )
             
             print("\n" + "="*70)
-            print("PHYSICS EXAMPLE: PROJECTILE MOTION ANALYSIS")
+            print("PHYSICS EXAMPLE: BASEBALL TRAJECTORY")
             print("="*70)
-            print("Initial conditions:")
-            print("  • Initial velocity: v0 = 20 m/s")
-            print("  • Launch angle: θ = 45°")
-            print("  • Gravity: g = 9.81 m/s²")
-            print("  • Mass: m = 1 kg")
+            print("Realistic scenario:")
+            print("  • Baseball hit at 45 m/s (162 km/h)")
+            print("  • Launch angle: θ = 35°")
+            print("  • Mass: 0.145 kg (official MLB baseball)")
+            print("  • Standard gravity: g = 9.80665 m/s²")
+            print("\nPhysical constants defined (use Variables dialog to view):")
+            print("  • g = 9.80665 m/s²")
+            print("  • v0 = 45.0 m/s")
+            print("  • theta = 35.0 deg")
+            print("  • mass = 0.145 kg")
             print("\nColumns created:")
-            print("  [RANGE]  t - Time (0 to 3 s)")
+            print("  [RANGE]  t - Time (0 to 5.3 s)")
             print("  [CALC]   x - Horizontal position")
             print("  [CALC]   y - Vertical position")
             print("  [CALC]   r - Distance from origin")
-            print("  [DERIV]  vx - Horizontal velocity (dx/dt)")
-            print("  [DERIV]  vy - Vertical velocity (dy/dt)")
-            print("  [CALC]   v - Total velocity magnitude")
-            print("  [DERIV]  ay - Vertical acceleration (should ≈ -9.81 m/s²)")
+            print("  [DERIV]  vx - Horizontal velocity")
+            print("  [DERIV]  vy - Vertical velocity")
+            print("  [CALC]   v - Total speed")
+            print("  [DERIV]  ay - Vertical acceleration")
             print("  [CALC]   KE - Kinetic energy")
             print("  [CALC]   PE - Potential energy")
-            print("  [CALC]   E - Total energy (should be conserved)")
+            print("  [CALC]   E - Total energy (conserved)")
             print("\nTry:")
-            print("  • Right-click headers to edit or convert columns")
-            print("  • Right-click cells to copy/paste data")
-            print("  • Press Enter on last cell to add new rows")
-            print("  • Observe energy conservation in column E!")
+            print("  • Plot x vs y to see the parabolic trajectory!")
+            print("  • Load other examples from the Examples menu")
+            print("  • Right-click table header → 'Manage Variables' to see constants")
+            print("  • All examples use realistic values and physical constants")
             print("="*70 + "\n")
             
         except Exception as e:
@@ -244,6 +143,29 @@ class Workspace(QWidget):
             import traceback
             traceback.print_exc()
             return
+    
+    def load_example(self, example_name: str):
+        """Load a specific example by name.
+        
+        Args:
+            example_name: Name of the example to load
+        """
+        try:
+            from utils.example_data import load_example
+            
+            if load_example(self.table, example_name):
+                self._show_status_message(f"Loaded example: {example_name}")
+                print(f"\n{'='*70}")
+                print(f"EXAMPLE LOADED: {example_name.upper()}")
+                print(f"{'='*70}\n")
+            else:
+                QMessageBox.warning(self, "Unknown Example", f"Example '{example_name}' not found.")
+                
+        except Exception as e:
+            QMessageBox.critical(self, "Error Loading Example", 
+                               f"Failed to load example '{example_name}':\n{str(e)}")
+            import traceback
+            traceback.print_exc()
     
     def _show_status_message(self, message):
         """Show a status message if the parent has a statusBar."""

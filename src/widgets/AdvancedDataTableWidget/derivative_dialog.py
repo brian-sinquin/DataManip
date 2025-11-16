@@ -15,6 +15,7 @@ from .constants import DIALOG_EDIT_DERIVATIVE, DIALOG_ADD_DERIVATIVE
 from .models import AdvancedColumnType
 from .dialog_utils import populate_column_combo_boxes
 from .dialog_widgets import ColumnSelectionComboBox
+from utils.unit_simplification import simplify_derivative_unit, format_unit_superscript
 
 
 class DerivativeEditorDialog(QDialog):
@@ -181,25 +182,26 @@ class DerivativeEditorDialog(QDialog):
             return
         
         # Get units from selected columns
-        num_unit = self.table_widget.getColumnUnit(num_idx) or "dimensionless"
-        den_unit = self.table_widget.getColumnUnit(den_idx) or "dimensionless"
+        num_unit = self.table_widget.getColumnUnit(num_idx) or ""
+        den_unit = self.table_widget.getColumnUnit(den_idx) or ""
         
-        # Calculate resulting unit
-        if num_unit == "dimensionless" and den_unit == "dimensionless":
-            result_unit = "dimensionless"
-        elif num_unit == "dimensionless":
-            result_unit = f"1/({den_unit})"
-        elif den_unit == "dimensionless":
-            result_unit = num_unit
+        # Calculate and simplify resulting unit
+        result_unit = simplify_derivative_unit(num_unit, den_unit)
+        result_unit = format_unit_superscript(result_unit)
+        
+        # Display the unit
+        if result_unit:
+            self.preview_unit_label.setText(result_unit)
         else:
-            result_unit = f"({num_unit})/({den_unit})"
-        
-        self.preview_unit_label.setText(result_unit)
+            self.preview_unit_label.setText("dimensionless")
         
         # Preview header
         from .constants import SYMBOL_DERIVATIVE
         diminutive = self.diminutive_edit.text().strip() or "deriv"
-        self.preview_header_label.setText(f"{SYMBOL_DERIVATIVE}{diminutive} [{result_unit}]")
+        if result_unit and result_unit != "dimensionless":
+            self.preview_header_label.setText(f"{SYMBOL_DERIVATIVE}{diminutive} [{result_unit}]")
+        else:
+            self.preview_header_label.setText(f"{SYMBOL_DERIVATIVE}{diminutive}")
     
     def _validate_and_accept(self):
         """Validate inputs before accepting."""
@@ -241,23 +243,18 @@ class DerivativeEditorDialog(QDialog):
         num_idx = self.numerator_combo.currentData()
         den_idx = self.denominator_combo.currentData()
         
-        # Calculate unit
-        num_unit = self.table_widget.getColumnUnit(num_idx) or "dimensionless"
-        den_unit = self.table_widget.getColumnUnit(den_idx) or "dimensionless"
+        # Get units from selected columns
+        num_unit = self.table_widget.getColumnUnit(num_idx) or ""
+        den_unit = self.table_widget.getColumnUnit(den_idx) or ""
         
-        if num_unit == "dimensionless" and den_unit == "dimensionless":
-            result_unit = "dimensionless"
-        elif num_unit == "dimensionless":
-            result_unit = f"1/({den_unit})"
-        elif den_unit == "dimensionless":
-            result_unit = num_unit
-        else:
-            result_unit = f"({num_unit})/({den_unit})"
+        # Calculate and simplify resulting unit
+        result_unit = simplify_derivative_unit(num_unit, den_unit)
+        result_unit = format_unit_superscript(result_unit)
         
         return {
             'diminutive': self.diminutive_edit.text().strip(),
             'description': self.description_edit.text().strip(),
-            'unit': result_unit,
+            'unit': result_unit if result_unit else "",
             'numerator_index': num_idx,
             'denominator_index': den_idx
         }

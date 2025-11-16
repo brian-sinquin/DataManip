@@ -7,6 +7,7 @@ import ui.message_boxes as mb
 from ui.AboutWindow import show_about_dialog
 from ui.PreferenceWindow import show_preference_window
 from utils.lang import tr
+from utils.example_data import get_example_names
 
 class MenuBar:
     """Menu bar handler for the main window."""
@@ -27,6 +28,10 @@ class MenuBar:
             # Edit Menu
             edit_menu = self.menubar.addMenu(tr("menu.edit"))
             self._create_edit_menu(edit_menu)
+
+            # Examples Menu
+            examples_menu = self.menubar.addMenu("Examples")
+            self._create_examples_menu(examples_menu)
 
             # Help Menu
             help_menu = self.menubar.addMenu(tr("menu.help"))
@@ -125,6 +130,33 @@ class MenuBar:
         preferences_action.setStatusTip(tr("edit.preferences_tip"))
         preferences_action.triggered.connect(self.main_window.show_preferences)
         edit_menu.addAction(preferences_action)
+    
+    def _create_examples_menu(self, examples_menu):
+        """Create examples menu with all available example datasets."""
+        # Get all available examples
+        example_names = get_example_names()
+        
+        for example_name in example_names:
+            # Create action for each example
+            action = QAction(example_name, self.main_window)
+            action.setStatusTip(f"Load example: {example_name}")
+            # Use lambda with default argument to capture current example_name
+            action.triggered.connect(
+                lambda checked=False, name=example_name: self._load_example(name)
+            )
+            examples_menu.addAction(action)
+    
+    def _load_example(self, example_name: str):
+        """Load a specific example into the workspace.
+        
+        Args:
+            example_name: Name of the example to load
+        """
+        # Access the workspace through main_window
+        if hasattr(self.main_window, 'workspace'):
+            self.main_window.workspace.load_example(example_name)
+        else:
+            print(f"Warning: Could not load example '{example_name}' - workspace not found")
     
     
     def _create_help_menu(self, help_menu):

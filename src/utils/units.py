@@ -95,8 +95,8 @@ def format_unit_pretty(unit_str: str, use_dot: bool = True, use_superscript: boo
     result = re.sub(r'\s*\*\*\s*', '**', result)
     
     # Convert divisions to negative exponents
-    # Pattern: / followed by unit name, optionally followed by **exponent
-    # Examples: /s**2 -> s**-2, /m -> m**-1
+    # Pattern: / followed by unit name, optionally followed by **exponent or superscript
+    # Examples: /s**2 -> s**-2, /m -> m**-1, /s² -> s**-2
     
     # Split by / to handle denominators
     parts = result.split('/')
@@ -108,19 +108,34 @@ def format_unit_pretty(unit_str: str, use_dot: bool = True, use_superscript: boo
         denominators = []
         for denom_part in parts[1:]:
             # Find all units with optional exponents in the denominator
-            # Pattern: unit_name optionally followed by **exponent
-            # Use findall to extract unit tokens
-            unit_pattern = r'([a-zA-Z_]\w*)(?:\*\*([\-+]?\d+))?'
+            # Pattern: unit_name (ASCII only) optionally followed by **exponent OR superscript characters
+            # Use [a-zA-Z_][a-zA-Z0-9_]* to match only ASCII unit names (not including superscripts)
+            unit_pattern = r'([a-zA-Z_][a-zA-Z0-9_]*)(?:\*\*([\-+]?\d+)|([⁰¹²³⁴⁵⁶⁷⁸⁹⁻⁺]+))?'
             matches = re.findall(unit_pattern, denom_part)
             
-            for unit_name, exponent in matches:
+            for unit_name, exponent, superscript in matches:
                 if not unit_name:
                     continue
-                    
+                
+                # Determine the exponent value
+                exp_value = None
                 if exponent:
+                    # Unit has exponent with ** notation: unit**n
+                    exp_value = int(exponent)
+                elif superscript:
+                    # Unit has superscript: convert back to regular number
+                    # Reverse the SUPERSCRIPT_MAP
+                    reverse_map = {v: k for k, v in SUPERSCRIPT_MAP.items()}
+                    exp_str = ''.join(reverse_map.get(c, c) for c in superscript)
+                    try:
+                        exp_value = int(exp_str)
+                    except ValueError:
+                        # If conversion fails, treat as no exponent
+                        exp_value = None
+                
+                if exp_value is not None:
                     # Unit has exponent: unit**n -> unit**-n (negate the exponent)
-                    exp = int(exponent)
-                    denominators.append(f"{unit_name}**{-exp}")
+                    denominators.append(f"{unit_name}**{-exp_value}")
                 else:
                     # Unit without exponent: unit -> unit**-1
                     denominators.append(f"{unit_name}**-1")

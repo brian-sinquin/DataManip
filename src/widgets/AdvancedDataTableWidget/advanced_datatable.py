@@ -686,7 +686,8 @@ class AdvancedDataTableWidget(QTableWidget):
                     self.setItem(row, column_index, item)
                     
                     # Calculate uncertainty if propagation is enabled
-                    if 0 <= column_index < len(self._columns):
+                    # Skip uncertainty calculation if result is None (missing data)
+                    if result is not None and 0 <= column_index < len(self._columns):
                         metadata = self._columns[column_index]
                         if metadata.propagate_uncertainty:
                             self._calculate_and_update_uncertainty(column_index, row, formula)
@@ -703,9 +704,12 @@ class AdvancedDataTableWidget(QTableWidget):
     def _recalculate_derivative_column(self, column_index: int) -> None:
         """Recalculate all values in a derivative column using discrete differences.
         
-        Calculates dy/dx where:
-        - For row i (except last): derivative[i] = (y[i+1] - y[i]) / (x[i+1] - x[i])
-        - For last row: derivative[n-1] = (y[n-1] - y[n-2]) / (x[n-1] - x[n-2])
+        Calculates dy/dx using forward differences:
+        - For row i (i < n-1): derivative[i] = (y[i+1] - y[i]) / (x[i+1] - x[i])
+        - For last row (i = n-1): derivative is undefined (empty cell)
+        
+        This produces n-1 valid derivative values for n data points, which is
+        the correct behavior for discrete numerical differentiation.
         
         Args:
             column_index: Index of the derivative column to recalculate
@@ -734,13 +738,13 @@ class AdvancedDataTableWidget(QTableWidget):
             
             for row in range(num_rows):
                 try:
-                    # Determine which rows to use for the difference
-                    if row < num_rows - 1:
-                        # Forward difference: use current and next row
-                        row1, row2 = row, row + 1
-                    else:
-                        # Last row: use backward difference
-                        row1, row2 = row - 1, row
+                    # Last row: leave empty (derivative undefined for forward difference)
+                    if row == num_rows - 1:
+                        self.setItem(row, column_index, QTableWidgetItem(""))
+                        continue
+                    
+                    # Forward difference: use current and next row
+                    row1, row2 = row, row + 1
                     
                     # Get values from numerator column
                     num_item1 = self.item(row1, num_idx)
@@ -1150,12 +1154,20 @@ class AdvancedDataTableWidget(QTableWidget):
             
             # Get the value
             item = self.item(row_index, col_idx)
-            value = 0.0
+            value = None
             if item is not None:
-                try:
-                    value = float(item.text())
-                except ValueError:
-                    value = 0.0
+                text = item.text().strip()
+                # If cell is empty or contains an error, treat as missing data
+                if text and not text.startswith("ERROR"):
+                    try:
+                        value = float(text)
+                    except ValueError:
+                        value = None
+            
+            # If any referenced column has missing data (None), skip this row
+            if value is None:
+                # Return None to indicate this row should be skipped
+                return (None, None)
             
             # Get the unit for this column
             unit = None
@@ -1382,7 +1394,11 @@ class AdvancedDataTableWidget(QTableWidget):
         - INTERPOLATION columns that use the changed column as x_data, y_data, or x_eval
         
         Columns are recalculated in left-to-right order to respect dependencies.
+        This function recursively triggers updates for dependent columns.
         """
+        # Track which columns we recalculated to trigger cascading updates
+        recalculated_columns = []
+        
         for idx, metadata in enumerate(self._columns):
             should_recalculate = False
             
@@ -1411,6 +1427,14 @@ class AdvancedDataTableWidget(QTableWidget):
                     self._recalculate_derivative_column(idx)
                 elif metadata.column_type == AdvancedColumnType.INTERPOLATION:
                     self._recalculate_interpolation_column(idx)
+                
+                # Track that this column was recalculated
+                recalculated_columns.append(idx)
+        
+        # Recursively update columns that depend on the columns we just recalculated
+        # This handles multi-level dependencies (e.g., RANGE -> DERIVATIVE -> CALCULATED)
+        for recalc_idx in recalculated_columns:
+            self._recalculate_dependent_columns(recalc_idx)
 
     def _recalculate_all_calculated_columns(self) -> None:
         """Recalculate all calculated, derivative, and interpolation columns."""

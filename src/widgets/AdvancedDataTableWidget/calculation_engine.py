@@ -99,7 +99,7 @@ class CalculationEngine:
         """Calculate discrete derivative at a specific row.
         
         Uses forward difference: dy/dx = (y[i+1] - y[i]) / (x[i+1] - x[i])
-        For the last row, uses backward difference.
+        Last row returns None (derivative undefined for forward difference).
         
         Args:
             numerator_values: List of y values
@@ -120,17 +120,13 @@ class CalculationEngine:
             if total_rows < 2:
                 return None
             
-            # For last row, use backward difference
-            if row_index == total_rows - 1:
-                if row_index == 0:
-                    return None  # Cannot calculate for single point
-                
-                y_diff = numerator_values[row_index] - numerator_values[row_index - 1]
-                x_diff = denominator_values[row_index] - denominator_values[row_index - 1]
-            else:
-                # Forward difference
-                y_diff = numerator_values[row_index + 1] - numerator_values[row_index]
-                x_diff = denominator_values[row_index + 1] - denominator_values[row_index]
+            # Last row: derivative is undefined for forward difference
+            if row_index >= total_rows - 1:
+                return None
+            
+            # Forward difference: use current and next row
+            y_diff = numerator_values[row_index + 1] - numerator_values[row_index]
+            x_diff = denominator_values[row_index + 1] - denominator_values[row_index]
             
             # Avoid division by zero
             if abs(x_diff) < 1e-15:
