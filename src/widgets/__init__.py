@@ -3,9 +3,9 @@
 __all__ = []
 
 # DataTable widget - main data table component
-from .DataTable.view import DataTableView, DataTableWidget
-from .DataTable.model import DataTableModel
-from .DataTable.column_metadata import ColumnType, DataType, ColumnMetadata
+from .data_table.view import DataTableView, DataTableWidget
+from .data_table.model import DataTableModel
+from .data_table.column_metadata import ColumnType, DataType, ColumnMetadata
 
 __all__.extend([
     'DataTableView',

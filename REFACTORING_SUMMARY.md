@@ -178,7 +178,7 @@ This maintains backward compatibility for existing imports while encouraging mig
 
 **Old import**:
 ```python
-from widgets.DataTable.formula_parser import FormulaParser
+from widgets.data_table.formula_parser import FormulaParser
 ```
 
 **New import** (recommended):
@@ -188,7 +188,7 @@ from utils.formula_parser import FormulaParser
 
 **Old import** (still works for now):
 ```python
-from widgets.DataTable.formula_parser import FormulaParser  # Works via wrapper
+from widgets.data_table.formula_parser import FormulaParser  # Works via wrapper
 ```
 
 ### For New Code

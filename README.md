@@ -43,7 +43,7 @@ Where:
 ### Example Usage
 
 ```python
-from widgets.DataTableV2.model import DataTableModel
+from widgets import DataTableModel
 import pandas as pd
 
 # Create model
@@ -59,6 +59,30 @@ model.add_calculated_column(
     formula="{x}**2",
     propagate_uncertainty=True  # Automatically creates y_u column
 )
+```
+
+## Project Structure
+
+```
+DataManip/
+├── src/
+│   ├── config/           # Application configuration
+│   ├── constants/        # Column types, data types, symbols, units
+│   ├── models/           # Domain logic (future extraction)
+│   ├── ui/               # UI components
+│   │   ├── main_window/
+│   │   ├── about_window/
+│   │   └── preference_window/
+│   ├── utils/            # Utility functions, formula parser, uncertainty
+│   └── widgets/          # Reusable widgets
+│       ├── data_table/   # Main data table widget
+│       ├── plot_widget/  # Plotting widget
+│       └── statistics_widget/
+├── tests/
+│   ├── unit/             # Unit tests
+│   ├── integration/      # Integration tests
+│   └── fixtures/         # Test fixtures
+└── examples/             # Usage examples
 
 # Uncertainties update automatically when data changes!
 ```
