@@ -4,8 +4,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from utils.lang import get_lang_manager, tr
-from utils.example_data import load_projectile_motion
-from widgets.AdvancedDataTableWidget.advanced_datatable import AdvancedDataTableWidget, AdvancedColumnType, AdvancedColumnDataType
+from widgets import DataTableWidget, DataTableModel
 from widgets.AdvancedDataTablePlotWidget import AdvancedDataTablePlotWidget
 from widgets.AdvancedDataTableStatisticsWidget import AdvancedDataTableStatisticsWidget
 
@@ -56,17 +55,21 @@ class Workspace(QWidget):
         data_tab_layout = QVBoxLayout()
         self.data_tab.setLayout(data_tab_layout)
         
-        # Create the advanced data table (without toolbar)
-        self.table = AdvancedDataTableWidget()
+        # Create the data table widget
+        self.table = DataTableWidget()
         data_tab_layout.addWidget(self.table)
+        
+        # Create toolbar
+        self.toolbar = self.table.create_toolbar()
+        data_tab_layout.insertWidget(0, self.toolbar)  # Insert at top
         
         # Create Plotting tab with the plot widget
         self.plot_tab = QWidget()
         plot_tab_layout = QVBoxLayout()
         self.plot_tab.setLayout(plot_tab_layout)
         
-        # Create the plot widget (will be connected after table setup)
-        self.plot_widget = AdvancedDataTablePlotWidget()
+        # Plot widget now updated for new DataTable API
+        self.plot_widget = AdvancedDataTablePlotWidget(self.table)
         plot_tab_layout.addWidget(self.plot_widget)
         
         # Create Statistics tab
@@ -74,8 +77,9 @@ class Workspace(QWidget):
         stats_tab_layout = QVBoxLayout()
         self.stats_tab.setLayout(stats_tab_layout)
         
-        # Create the statistics widget (will be connected after table setup)
+        # Statistics widget now updated for new DataTable API
         self.stats_widget = AdvancedDataTableStatisticsWidget()
+        self.stats_widget.set_datatable(self.table)
         stats_tab_layout.addWidget(self.stats_widget)
         
         # Add tabs to tab widget
@@ -85,64 +89,18 @@ class Workspace(QWidget):
     
     def _connect_signals(self):
         """Connect table signals."""
-        # Connect table signals
-        self.table.columnAdded.connect(self.on_column_added)
-        self.table.columnRemoved.connect(self.on_column_removed)
-        self.table.formulaChanged.connect(self.on_formula_changed)
+        # Note: DataTable uses a different signal architecture than the old widget
+        # Signals are emitted from the model, not the view
+        model = self.table.model
         
-        # Connect plot widget to datatable
-        self.plot_widget.set_datatable(self.table)
-        
-        # Connect statistics widget to datatable
-        self.stats_widget.set_datatable(self.table)
+        # TODO: Update plot and stats widgets to work with new DataTable
+        # self.plot_widget.set_datatable(self.table)
+        # self.stats_widget.set_datatable(self.table)
     
     def _setup_initial_data(self):
         """Set up initial physics example - Baseball Trajectory."""
-        try:
-            # Load the projectile motion example from example_data module
-            load_projectile_motion(self.table)
-            
-            self._show_status_message(
-                "Loaded example: Baseball Trajectory (v0=45 m/s, θ=35°)"
-            )
-            
-            print("\n" + "="*70)
-            print("PHYSICS EXAMPLE: BASEBALL TRAJECTORY")
-            print("="*70)
-            print("Realistic scenario:")
-            print("  • Baseball hit at 45 m/s (162 km/h)")
-            print("  • Launch angle: θ = 35°")
-            print("  • Mass: 0.145 kg (official MLB baseball)")
-            print("  • Standard gravity: g = 9.80665 m/s²")
-            print("\nPhysical constants defined (use Variables dialog to view):")
-            print("  • g = 9.80665 m/s²")
-            print("  • v0 = 45.0 m/s")
-            print("  • theta = 35.0 deg")
-            print("  • mass = 0.145 kg")
-            print("\nColumns created:")
-            print("  [RANGE]  t - Time (0 to 5.3 s)")
-            print("  [CALC]   x - Horizontal position")
-            print("  [CALC]   y - Vertical position")
-            print("  [CALC]   r - Distance from origin")
-            print("  [DERIV]  vx - Horizontal velocity")
-            print("  [DERIV]  vy - Vertical velocity")
-            print("  [CALC]   v - Total speed")
-            print("  [DERIV]  ay - Vertical acceleration")
-            print("  [CALC]   KE - Kinetic energy")
-            print("  [CALC]   PE - Potential energy")
-            print("  [CALC]   E - Total energy (conserved)")
-            print("\nTry:")
-            print("  • Plot x vs y to see the parabolic trajectory!")
-            print("  • Load other examples from the Examples menu")
-            print("  • Right-click table header → 'Manage Variables' to see constants")
-            print("  • All examples use realistic values and physical constants")
-            print("="*70 + "\n")
-            
-        except Exception as e:
-            QMessageBox.critical(self, tr("Error"), tr("Failed to setup physics example: ") + str(e))
-            import traceback
-            traceback.print_exc()
-            return
+        from utils.example_data import load_projectile_motion
+        load_projectile_motion(self.table)
     
     def load_example(self, example_name: str):
         """Load a specific example by name.
@@ -166,6 +124,9 @@ class Workspace(QWidget):
                                f"Failed to load example '{example_name}':\n{str(e)}")
             import traceback
             traceback.print_exc()
+
+        #     import traceback
+        #     traceback.print_exc()
     
     def _show_status_message(self, message):
         """Show a status message if the parent has a statusBar."""

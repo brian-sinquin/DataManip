@@ -1,6 +1,17 @@
 # DataManip
 An open-source data manipulation software for experimental sciences
 
+## Features
+
+- **Data Columns**: Create and manage numerical, categorical, and text data
+- **Calculated Columns**: Define formulas using other columns (e.g., `{A} + {B}`)
+- **Uncertainty Propagation**: Automatic error propagation using symbolic differentiation
+- **Derivative Columns**: Calculate discrete differences (numerical derivatives)
+- **Units Support**: Assign and convert units using Pint
+- **File I/O**: Save and load data tables in JSON format
+- **Copy/Paste**: Excel-compatible clipboard operations
+- **Undo/Redo**: Full command history with multi-level undo
+
 ## Getting Started
 
 ### Prerequisites
@@ -17,3 +28,39 @@ cd DataManip
 uv sync
 uv run datamanip
 ```
+
+## Uncertainty Propagation
+
+DataManip automatically calculates propagated uncertainties using the standard error propagation formula:
+
+**δf = √(Σ(∂f/∂xᵢ · δxᵢ)²)**
+
+Where:
+- δf = combined uncertainty of result
+- ∂f/∂xᵢ = partial derivatives (calculated symbolically using SymPy)
+- δxᵢ = uncertainties of input variables
+
+### Example Usage
+
+```python
+from widgets.DataTableV2.model import DataTableModel
+import pandas as pd
+
+# Create model
+model = DataTableModel()
+
+# Add data with uncertainties
+model.add_data_column("x", data=pd.Series([1.0, 2.0, 3.0]))
+model.add_data_column("x_u", data=pd.Series([0.1, 0.1, 0.15]))
+
+# Create calculated column with uncertainty propagation
+model.add_calculated_column(
+    "y",
+    formula="{x}**2",
+    propagate_uncertainty=True  # Automatically creates y_u column
+)
+
+# Uncertainties update automatically when data changes!
+```
+
+See `tests/widgets/DataTableV2/demo_uncertainty.py` for a complete interactive demo.

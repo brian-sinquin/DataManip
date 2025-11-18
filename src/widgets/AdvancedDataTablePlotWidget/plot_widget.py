@@ -1,10 +1,10 @@
 """
-Main plotting widget for AdvancedDataTableWidget.
+Main plotting widget for DataTable.
 
 This widget provides:
 - Matplotlib canvas for plotting
 - Column selection UI for X and Y axes
-- Integration with AdvancedDataTableWidget data
+- Integration with DataTableWidget data
 """
 
 from PySide6.QtWidgets import (
@@ -20,12 +20,11 @@ from matplotlib.figure import Figure
 import numpy as np
 from typing import Optional, List
 
-from widgets.AdvancedDataTableWidget.advanced_datatable import AdvancedDataTableWidget
-from widgets.AdvancedDataTableWidget.models import AdvancedColumnType
+from widgets import DataTableWidget, ColumnType, DataType
 
 
 class AdvancedDataTablePlotWidget(QWidget):
-    """Widget for plotting data from AdvancedDataTableWidget.
+    """Widget for plotting data from DataTableWidget.
     
     Features:
     - X and Y column selection from dropdown menus
@@ -34,11 +33,11 @@ class AdvancedDataTablePlotWidget(QWidget):
     - Unit-aware axis labels
     """
     
-    def __init__(self, datatable: Optional[AdvancedDataTableWidget] = None, parent=None):
+    def __init__(self, datatable: Optional[DataTableWidget] = None, parent=None):
         """Initialize the plot widget.
         
         Args:
-            datatable: Reference to the AdvancedDataTableWidget to plot from
+            datatable: Reference to the DataTableWidget to plot from
             parent: Parent widget
         """
         super().__init__(parent)
@@ -125,25 +124,28 @@ class AdvancedDataTablePlotWidget(QWidget):
         self.x_column_combo.currentIndexChanged.connect(self._on_column_selection_changed)
         self.y_column_combo.currentIndexChanged.connect(self._on_column_selection_changed)
     
-    def set_datatable(self, datatable: AdvancedDataTableWidget):
+    def set_datatable(self, datatable: DataTableWidget):
         """Set or update the datatable reference.
         
         Args:
-            datatable: The AdvancedDataTableWidget to plot from
+            datatable: The DataTableWidget to plot from
         """
         self._datatable = datatable
         self._populate_column_selectors()
         
-        # Connect to datatable signals for updates
+        # Connect to model signals for updates
         if self._datatable:
-            self._datatable.columnAdded.connect(self._on_datatable_changed)
-            self._datatable.columnRemoved.connect(self._on_datatable_changed)
-            self._datatable.itemChanged.connect(self._on_data_changed)
+            model = self._datatable.model()
+            model.columnAdded.connect(self._on_datatable_changed)
+            model.columnRemoved.connect(self._on_datatable_changed)
+            model.dataChanged.connect(self._on_data_changed)
     
     def _populate_column_selectors(self):
         """Populate the X and Y column dropdown menus with available columns."""
         if not self._datatable:
             return
+        
+        model = self._datatable.model()
         
         # Block signals to prevent triggering updates during population
         self.x_column_combo.blockSignals(True)
@@ -158,20 +160,22 @@ class AdvancedDataTablePlotWidget(QWidget):
         self.y_column_combo.clear()
         
         # Populate with numerical columns
-        column_count = self._datatable.columnCount()
-        for col_idx in range(column_count):
-            metadata = self._datatable._columns[col_idx]
-            
-            # Only include numerical columns (not uncertainty columns typically)
-            if metadata.data_type.value == "numerical":
-                # Create display text with diminutive and unit
-                display_text = metadata.diminutive
-                if metadata.unit:
-                    display_text += f" [{metadata.unit}]"
+        for col_name in model.get_column_names():
+            try:
+                metadata = model.get_column_metadata(col_name)
                 
-                # Store the column index as user data
-                self.x_column_combo.addItem(display_text, col_idx)
-                self.y_column_combo.addItem(display_text, col_idx)
+                # Only include numerical columns (not uncertainty columns typically)
+                if metadata.dtype in (DataType.FLOAT, DataType.INTEGER):
+                    # Create display text with name and unit
+                    display_text = col_name
+                    if metadata.unit:
+                        display_text += f" [{metadata.unit}]"
+                    
+                    # Store the column name as user data
+                    self.x_column_combo.addItem(display_text, col_name)
+                    self.y_column_combo.addItem(display_text, col_name)
+            except Exception:
+                continue
         
         # Restore previous selections if possible
         x_index = self.x_column_combo.findText(current_x)
@@ -190,14 +194,11 @@ class AdvancedDataTablePlotWidget(QWidget):
         self.x_column_combo.blockSignals(False)
         self.y_column_combo.blockSignals(False)
     
-    def _get_column_data(self, col_idx: int) -> Optional[np.ndarray]:
+    def _get_column_data(self, col_name: str) -> Optional[np.ndarray]:
         """Extract numerical data from a column.
         
-        Skips empty cells, error values, and invalid data.
-        This ensures derivative columns (which have n-1 values) plot correctly.
-        
         Args:
-            col_idx: Index of the column to extract
+            col_name: Name of the column to extract
             
         Returns:
             Numpy array of numerical values, or None if extraction fails
@@ -205,43 +206,43 @@ class AdvancedDataTablePlotWidget(QWidget):
         if not self._datatable:
             return None
         
-        row_count = self._datatable.rowCount()
-        if row_count == 0:
+        model = self._datatable.model()
+        
+        try:
+            # Get column data as pandas Series
+            series = model.get_column_data(col_name)
+            
+            # Drop NaN values and convert to numpy array
+            data = series.dropna().to_numpy()
+            
+            return data if len(data) > 0 else None
+            
+        except Exception:
             return None
-        
-        data = []
-        for row in range(row_count):
-            item = self._datatable.item(row, col_idx)
-            if item:
-                text = item.text().strip()
-                # Skip empty cells, error values
-                if not text or text.startswith("ERROR"):
-                    continue
-                try:
-                    value = float(text)
-                    data.append(value)
-                except (ValueError, TypeError):
-                    continue
-        
-        return np.array(data) if data else None
     
-    def _find_uncertainty_column(self, data_col_idx: int) -> Optional[int]:
+    def _find_uncertainty_column(self, data_col_name: str) -> Optional[str]:
         """Find the uncertainty column associated with a data column.
         
         Args:
-            data_col_idx: Index of the data column
+            data_col_name: Name of the data column
             
         Returns:
-            Index of the uncertainty column, or None if not found
+            Name of the uncertainty column, or None if not found
         """
         if not self._datatable:
             return None
         
+        model = self._datatable.model()
+        
         # Look for an uncertainty column that references this data column
-        for col_idx, metadata in enumerate(self._datatable._columns):
-            if (metadata.column_type == AdvancedColumnType.UNCERTAINTY and
-                metadata.uncertainty_reference == data_col_idx):
-                return col_idx
+        for col_name in model.get_column_names():
+            try:
+                metadata = model.get_column_metadata(col_name)
+                if (metadata.column_type == ColumnType.UNCERTAINTY and
+                    metadata.uncertainty_reference == data_col_name):
+                    return col_name
+            except Exception:
+                continue
         
         return None
     
@@ -252,102 +253,64 @@ class AdvancedDataTablePlotWidget(QWidget):
             QMessageBox.warning(self, "No Data", "No datatable connected.")
             return
         
-        # Get selected column indices
-        x_idx = self.x_column_combo.currentData()
-        y_idx = self.y_column_combo.currentData()
+        model = self._datatable.model()
         
-        if x_idx is None or y_idx is None:
+        # Get selected column names
+        x_name = self.x_column_combo.currentData()
+        y_name = self.y_column_combo.currentData()
+        
+        if x_name is None or y_name is None:
             QMessageBox.warning(self, "Invalid Selection", "Please select both X and Y columns.")
             return
+        
+        # Get column data
+        x_data = self._get_column_data(x_name)
+        y_data = self._get_column_data(y_name)
+        
+        if x_data is None or y_data is None:
+            QMessageBox.warning(self, "No Data", "Selected columns contain no valid numerical data.")
+            return
+        
+        # Ensure both arrays have the same length (handle derivatives which may have n-1 values)
+        min_len = min(len(x_data), len(y_data))
+        x_data = x_data[:min_len]
+        y_data = y_data[:min_len]
         
         # Check if uncertainty plotting is requested
         show_uncertainty = self.uncertainty_checkbox.isChecked()
         
-        # Find uncertainty columns if requested
-        x_unc_idx = None
-        y_unc_idx = None
+        x_unc_data = None
+        y_unc_data = None
+        
         if show_uncertainty:
-            x_unc_idx = self._find_uncertainty_column(x_idx)
-            y_unc_idx = self._find_uncertainty_column(y_idx)
-        
-        # Extract data row-by-row to maintain pairing
-        # This handles derivative columns (with n-1 values) correctly
-        x_data = []
-        y_data = []
-        x_unc_data = []
-        y_unc_data = []
-        
-        row_count = self._datatable.rowCount()
-        for row in range(row_count):
-            x_item = self._datatable.item(row, x_idx)
-            y_item = self._datatable.item(row, y_idx)
+            # Find uncertainty columns
+            x_unc_name = self._find_uncertainty_column(x_name)
+            y_unc_name = self._find_uncertainty_column(y_name)
             
-            # Both cells must exist and have valid values
-            if x_item and y_item:
-                x_text = x_item.text().strip()
-                y_text = y_item.text().strip()
-                
-                # Skip empty or error cells
-                if not x_text or not y_text or x_text.startswith("ERROR") or y_text.startswith("ERROR"):
-                    continue
-                
-                try:
-                    x_val = float(x_text)
-                    y_val = float(y_text)
-                    
-                    # Extract uncertainty values if available
-                    x_unc = 0.0
-                    y_unc = 0.0
-                    
-                    if show_uncertainty:
-                        if x_unc_idx is not None:
-                            x_unc_item = self._datatable.item(row, x_unc_idx)
-                            if x_unc_item:
-                                x_unc_text = x_unc_item.text().strip()
-                                if x_unc_text and not x_unc_text.startswith("ERROR"):
-                                    try:
-                                        x_unc = float(x_unc_text)
-                                    except (ValueError, TypeError):
-                                        x_unc = 0.0
-                        
-                        if y_unc_idx is not None:
-                            y_unc_item = self._datatable.item(row, y_unc_idx)
-                            if y_unc_item:
-                                y_unc_text = y_unc_item.text().strip()
-                                if y_unc_text and not y_unc_text.startswith("ERROR"):
-                                    try:
-                                        y_unc = float(y_unc_text)
-                                    except (ValueError, TypeError):
-                                        y_unc = 0.0
-                    
-                    x_data.append(x_val)
-                    y_data.append(y_val)
-                    x_unc_data.append(x_unc)
-                    y_unc_data.append(y_unc)
-                    
-                except (ValueError, TypeError):
-                    continue
-        
-        if not x_data or not y_data:
-            QMessageBox.warning(self, "No Data", "Selected columns contain no valid numerical data pairs.")
-            return
-        
-        # Convert to numpy arrays
-        x_data = np.array(x_data)
-        y_data = np.array(y_data)
-        x_unc_data = np.array(x_unc_data) if show_uncertainty else None
-        y_unc_data = np.array(y_unc_data) if show_uncertainty else None
+            if x_unc_name:
+                x_unc_data = self._get_column_data(x_unc_name)
+                if x_unc_data is not None:
+                    x_unc_data = x_unc_data[:min_len]
+            
+            if y_unc_name:
+                y_unc_data = self._get_column_data(y_unc_name)
+                if y_unc_data is not None:
+                    y_unc_data = y_unc_data[:min_len]
         
         # Get column metadata for labels
-        x_metadata = self._datatable._columns[x_idx]
-        y_metadata = self._datatable._columns[y_idx]
+        try:
+            x_metadata = model.get_column_metadata(x_name)
+            y_metadata = model.get_column_metadata(y_name)
+        except Exception:
+            QMessageBox.warning(self, "Error", "Failed to retrieve column metadata.")
+            return
         
         # Create axis labels
-        x_label = x_metadata.diminutive
+        x_label = x_name
         if x_metadata.unit:
             x_label += f" [{x_metadata.unit}]"
         
-        y_label = y_metadata.diminutive
+        y_label = y_name
         if y_metadata.unit:
             y_label += f" [{y_metadata.unit}]"
         
@@ -355,13 +318,9 @@ class AdvancedDataTablePlotWidget(QWidget):
         self.ax.clear()
         
         # Plot with or without error bars
-        if show_uncertainty and (x_unc_idx is not None or y_unc_idx is not None):
-            # Prepare error bar arrays (None if no uncertainty column found)
-            xerr = x_unc_data if x_unc_idx is not None else None
-            yerr = y_unc_data if y_unc_idx is not None else None
-            
+        if show_uncertainty and (x_unc_data is not None or y_unc_data is not None):
             # Plot with error bars
-            self.ax.errorbar(x_data, y_data, xerr=xerr, yerr=yerr,
+            self.ax.errorbar(x_data, y_data, xerr=x_unc_data, yerr=y_unc_data,
                            fmt='o-', linewidth=2, markersize=6, 
                            capsize=5, capthick=1.5, elinewidth=1.5,
                            label='Data with uncertainty')
@@ -372,7 +331,7 @@ class AdvancedDataTablePlotWidget(QWidget):
         
         self.ax.set_xlabel(x_label, fontsize=12)
         self.ax.set_ylabel(y_label, fontsize=12)
-        self.ax.set_title(f"{y_metadata.diminutive} vs {x_metadata.diminutive}", fontsize=14)
+        self.ax.set_title(f"{y_name} vs {x_name}", fontsize=14)
         self.ax.grid(True, alpha=0.3)
         
         # Tight layout for better spacing

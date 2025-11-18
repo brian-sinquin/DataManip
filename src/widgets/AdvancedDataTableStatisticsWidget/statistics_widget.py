@@ -19,9 +19,11 @@ from PySide6.QtCore import Qt, Slot
 # Matplotlib imports
 import matplotlib
 matplotlib.use('QtAgg')
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
+
+from widgets import DataTableWidget, ColumnType, DataType
 
 
 class AdvancedDataTableStatisticsWidget(QWidget):
@@ -42,7 +44,7 @@ class AdvancedDataTableStatisticsWidget(QWidget):
         """
         super().__init__(parent)
         
-        self._datatable = None  # Reference to the AdvancedDataTableWidget
+        self._datatable = None  # Reference to the DataTableWidget
         
         self._setup_ui()
     
@@ -104,25 +106,28 @@ class AdvancedDataTableStatisticsWidget(QWidget):
         # Initial message
         self._show_initial_message()
     
-    def set_datatable(self, datatable):
+    def set_datatable(self, datatable: DataTableWidget):
         """Set the datatable to analyze.
         
         Args:
-            datatable: Instance of AdvancedDataTableWidget
+            datatable: Instance of DataTableWidget
         """
         self._datatable = datatable
         self._populate_column_selector()
         
-        # Connect to datatable signals for updates
+        # Connect to model signals for updates
         if self._datatable:
-            self._datatable.columnAdded.connect(self._on_datatable_changed)
-            self._datatable.columnRemoved.connect(self._on_datatable_changed)
-            self._datatable.itemChanged.connect(self._on_data_changed)
+            model = self._datatable.model()
+            model.columnAdded.connect(self._on_datatable_changed)
+            model.columnRemoved.connect(self._on_datatable_changed)
+            model.dataChanged.connect(self._on_data_changed)
     
     def _populate_column_selector(self):
         """Populate the column dropdown with numerical columns."""
         if not self._datatable:
             return
+        
+        model = self._datatable.model()
         
         # Block signals during population
         self.column_combo.blockSignals(True)
@@ -134,23 +139,33 @@ class AdvancedDataTableStatisticsWidget(QWidget):
         self.column_combo.clear()
         
         # Populate with numerical columns
-        column_count = self._datatable.columnCount()
-        for col_idx in range(column_count):
-            metadata = self._datatable._columns[col_idx]
-            
-            # Only include numerical columns (exclude uncertainty columns typically)
-            if metadata.data_type.value == "numerical":
-                # Create display text with diminutive and unit
-                display_text = metadata.diminutive
-                if metadata.unit:
-                    display_text += f" [{metadata.unit}]"
+        for col_name in model.get_column_names():
+            try:
+                metadata = model.get_column_metadata(col_name)
                 
-                # Add type indicator
-                type_symbol = self._datatable._get_column_type_symbol(metadata.column_type)
-                display_text = f"{type_symbol}{display_text}"
-                
-                # Store the column index as user data
-                self.column_combo.addItem(display_text, col_idx)
+                # Only include numerical columns
+                if metadata.dtype in (DataType.FLOAT, DataType.INTEGER):
+                    # Create display text with name and unit
+                    display_text = col_name
+                    if metadata.unit:
+                        display_text += f" [{metadata.unit}]"
+                    
+                    # Add type indicator
+                    type_symbols = {
+                        ColumnType.DATA: "●",
+                        ColumnType.CALCULATED: "ƒ",
+                        ColumnType.DERIVATIVE: "∂",
+                        ColumnType.RANGE: "⋯",
+                        ColumnType.INTERPOLATION: "~",
+                        ColumnType.UNCERTAINTY: "σ"
+                    }
+                    type_symbol = type_symbols.get(metadata.column_type, "")
+                    display_text = f"{type_symbol}{display_text}"
+                    
+                    # Store the column name as user data
+                    self.column_combo.addItem(display_text, col_name)
+            except Exception:
+                continue
         
         # Restore previous selection if possible
         index = self.column_combo.findText(current_text)
@@ -162,13 +177,11 @@ class AdvancedDataTableStatisticsWidget(QWidget):
         # Re-enable signals
         self.column_combo.blockSignals(False)
     
-    def _get_column_data(self, col_idx: int) -> Optional[np.ndarray]:
+    def _get_column_data(self, col_name: str) -> Optional[np.ndarray]:
         """Extract numerical data from a column.
         
-        Skips empty cells and error values.
-        
         Args:
-            col_idx: Index of the column to extract
+            col_name: Name of the column to extract
             
         Returns:
             Numpy array of numerical values, or None if no valid data
@@ -176,27 +189,19 @@ class AdvancedDataTableStatisticsWidget(QWidget):
         if not self._datatable:
             return None
         
-        row_count = self._datatable.rowCount()
-        if row_count == 0:
+        model = self._datatable.model()
+        
+        try:
+            # Get column data as pandas Series
+            series = model.get_column_data(col_name)
+            
+            # Drop NaN and inf values, convert to numpy
+            data = series.replace([np.inf, -np.inf], np.nan).dropna().to_numpy()
+            
+            return data if len(data) > 0 else None
+            
+        except Exception:
             return None
-        
-        data = []
-        for row in range(row_count):
-            item = self._datatable.item(row, col_idx)
-            if item:
-                text = item.text().strip()
-                # Skip empty cells and error values
-                if not text or text.startswith("ERROR"):
-                    continue
-                try:
-                    value = float(text)
-                    # Skip inf and nan
-                    if not (np.isinf(value) or np.isnan(value)):
-                        data.append(value)
-                except (ValueError, TypeError):
-                    continue
-        
-        return np.array(data) if data else None
     
     def _calculate_statistics(self, data: np.ndarray) -> dict:
         """Calculate descriptive statistics for the data.
@@ -426,23 +431,27 @@ class AdvancedDataTableStatisticsWidget(QWidget):
         if not self._datatable:
             return
         
-        # Get selected column
-        col_idx = self.column_combo.currentData()
-        if col_idx is None:
+        model = self._datatable.model()
+        
+        # Get selected column name
+        col_name = self.column_combo.currentData()
+        if col_name is None:
             self._show_initial_message()
             return
         
         # Get column metadata
-        metadata = self._datatable._columns[col_idx]
-        column_name = metadata.diminutive
-        unit = metadata.unit or ""
+        try:
+            metadata = model.get_column_metadata(col_name)
+            unit = metadata.unit or ""
+        except Exception:
+            unit = ""
         
         # Extract data
-        data = self._get_column_data(col_idx)
+        data = self._get_column_data(col_name)
         
         if data is None or len(data) == 0:
             self.stats_display.setHtml(
-                f"<h3>Statistics for: {column_name}</h3>"
+                f"<h3>Statistics for: {col_name}</h3>"
                 "<p><b>Error:</b> No valid numerical data found in this column.</p>"
             )
             self.figure.clear()
@@ -459,11 +468,11 @@ class AdvancedDataTableStatisticsWidget(QWidget):
         stats = self._calculate_statistics(data)
         
         # Display statistics
-        stats_text = self._format_statistics_text(stats, column_name, unit)
+        stats_text = self._format_statistics_text(stats, col_name, unit)
         self.stats_display.setHtml(stats_text)
         
         # Create visualizations
-        self._create_visualizations(data, column_name, unit)
+        self._create_visualizations(data, col_name, unit)
     
     @Slot()
     def _on_column_changed(self):
