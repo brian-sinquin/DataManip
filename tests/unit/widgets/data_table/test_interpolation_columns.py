@@ -438,8 +438,9 @@ class TestInterpolationEdgeCases:
         """Test that metadata is set correctly."""
         model = DataTableModel()
         
-        model.add_data_column("x", data=[0, 1, 2])
-        model.add_data_column("y", data=[0, 10, 20], unit="m")
+        # Use 4 points for cubic interpolation (minimum requirement)
+        model.add_data_column("x", data=[0, 1, 2, 3])
+        model.add_data_column("y", data=[0, 10, 20, 30], unit="m")
         
         model.add_interpolation_column(
             "y_interp",

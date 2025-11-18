@@ -312,8 +312,10 @@ class TestErrorHandling:
         """Test division by zero handling."""
         parser = FormulaParser()
         # NumPy handles this by returning inf
-        result = parser.evaluate("{x} / {y}", {'x': 10, 'y': 0})
-        assert np.isinf(result)
+        with np.testing.suppress_warnings() as sup:
+            sup.filter(RuntimeWarning, "divide by zero")
+            result = parser.evaluate("{x} / {y}", {'x': 10, 'y': 0})
+            assert np.isinf(result)
     
     def test_invalid_function(self):
         """Test that invalid functions are rejected."""
@@ -324,9 +326,11 @@ class TestErrorHandling:
     def test_log_of_negative(self):
         """Test log of negative number."""
         parser = FormulaParser()
-        result = parser.evaluate("log({x})", {'x': -1})
         # NumPy returns nan for log of negative
-        assert np.isnan(result)
+        with np.testing.suppress_warnings() as sup:
+            sup.filter(RuntimeWarning, "invalid value encountered")
+            result = parser.evaluate("log({x})", {'x': -1})
+            assert np.isnan(result)
 
 
 class TestAggregationFunctions:

@@ -534,9 +534,32 @@ class DataTableModel(QAbstractTableModel):
         if name in self._columns:
             raise ColumnExistsError(name)
         
-        # Use defaults from config
+        # Infer dtype from data if not specified
         if dtype is None:
-            dtype = self._config.default_dtype
+            if data is not None:
+                # Try to infer dtype from the data
+                if isinstance(data, pd.Series):
+                    sample_data = data
+                else:
+                    sample_data = pd.Series(data)
+                
+                # Check if data contains only strings (not numeric strings)
+                if sample_data.dtype == object:
+                    # Try to convert to numeric
+                    try:
+                        pd.to_numeric(sample_data, errors='raise')
+                        dtype = self._config.default_dtype  # Use default (FLOAT)
+                    except (ValueError, TypeError):
+                        # Cannot convert to numeric, use STRING
+                        dtype = DataType.STRING
+                else:
+                    # Use default from config
+                    dtype = self._config.default_dtype
+            else:
+                # No data provided, use default
+                dtype = self._config.default_dtype
+        
+        # Use defaults from config
         if precision is None:
             precision = self._config.default_precision
         
@@ -1091,6 +1114,19 @@ class DataTableModel(QAbstractTableModel):
         if len(x_clean) < 2:
             raise ValueError(f"Need at least 2 valid data points for interpolation, got {len(x_clean)}")
         
+        # Check method-specific minimum points requirements
+        min_points = {
+            "linear": 2,
+            "nearest": 2,
+            "quadratic": 3,
+            "cubic": 4
+        }
+        required_points = min_points.get(method, 2)
+        if len(x_clean) < required_points:
+            raise ValueError(
+                f"Method '{method}' requires at least {required_points} valid data points, got {len(x_clean)}"
+            )
+        
         # Check for duplicate X values (would break interpolation)
         if x_clean.duplicated().any():
             raise ValueError(f"X column '{x_column}' contains duplicate values. Interpolation requires unique X values.")
@@ -1125,11 +1161,18 @@ class DataTableModel(QAbstractTableModel):
             if not pd.api.types.is_numeric_dtype(eval_data):
                 raise ValueError(f"Evaluation column '{eval_column}' must be numeric")
             x_eval = eval_data
+            # For eval_column, preserve NaN from eval column only
+            nan_mask = eval_data.isna()
         else:
             x_eval = x_data
+            # For self-evaluation, preserve NaN from source data
+            nan_mask = x_data.isna() | y_data.isna()
         
         # Compute interpolated values
         result = pd.Series(interp_func(x_eval), dtype=float)
+        
+        # Apply NaN mask
+        result[nan_mask] = np.nan
         
         # Use Y column's unit if not specified
         if unit is None:
@@ -1144,6 +1187,7 @@ class DataTableModel(QAbstractTableModel):
             description=description,
             interp_x_column=x_column,
             interp_y_column=y_column,
+            interp_eval_column=eval_column,  # Store eval column for recalculation
             interp_method=method,
             precision=precision if precision is not None else 6
         )
@@ -2064,6 +2108,76 @@ class DataTableModel(QAbstractTableModel):
                 
             except Exception as e:
                 self.errorOccurred.emit(name, f"Derivative recalculation failed: {e}")
+        
+        # Recalculate INTERPOLATION columns
+        elif metadata.is_interpolation_column():
+            if not metadata.interp_x_column or not metadata.interp_y_column:
+                return
+            
+            try:
+                x_column = metadata.interp_x_column
+                y_column = metadata.interp_y_column
+                eval_column = metadata.interp_eval_column
+                method = metadata.interp_method or "linear"
+                
+                # Get source data
+                x_data = self._columns[x_column]
+                y_data = self._columns[y_column]
+                
+                # Remove NaN values for interpolation
+                mask = ~(x_data.isna() | y_data.isna())
+                x_clean = x_data[mask]
+                y_clean = y_data[mask]
+                
+                if len(x_clean) < 2:
+                    # Not enough data points, fill with NaN
+                    result = pd.Series([np.nan] * self._row_count, dtype=float)
+                else:
+                    # Sort by X values (required for interpolation)
+                    sort_idx = np.argsort(x_clean)
+                    x_sorted = x_clean.iloc[sort_idx]
+                    y_sorted = y_clean.iloc[sort_idx]
+                    
+                    # Create interpolation function
+                    kind_map = {
+                        "linear": "linear",
+                        "cubic": "cubic",
+                        "quadratic": "quadratic",
+                        "nearest": "nearest"
+                    }
+                    interp_func = interpolate.interp1d(
+                        x_sorted,
+                        y_sorted,
+                        kind=kind_map.get(method, "linear"),
+                        fill_value=np.nan,
+                        bounds_error=False
+                    )
+                    
+                    # Determine evaluation points and NaN mask
+                    if eval_column:
+                        eval_data = self._columns[eval_column]
+                        x_eval = eval_data
+                        nan_mask = eval_data.isna()
+                    else:
+                        x_eval = x_data
+                        nan_mask = x_data.isna() | y_data.isna()
+                    
+                    # Evaluate interpolation
+                    result = pd.Series(interp_func(x_eval), dtype=float)
+                    
+                    # Apply NaN mask
+                    result[nan_mask] = np.nan
+                
+                # Update column data
+                self._columns[name] = result
+                
+                # Emit signal for views to update
+                first_idx = self.index(0, self._column_order.index(name))
+                last_idx = self.index(self._row_count - 1, self._column_order.index(name))
+                self.dataChanged.emit(first_idx, last_idx, [Qt.ItemDataRole.DisplayRole])
+                
+            except Exception as e:
+                self.errorOccurred.emit(name, f"Interpolation recalculation failed: {e}")
     
     def _evaluate_formula(self, column_name: str, formula: str) -> pd.Series:
         """Evaluate a formula and return the result as a Series.

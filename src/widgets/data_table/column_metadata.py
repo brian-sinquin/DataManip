@@ -95,6 +95,7 @@ class ColumnMetadata:
     # Interpolation properties
     interp_x_column: Optional[str] = None
     interp_y_column: Optional[str] = None
+    interp_eval_column: Optional[str] = None  # Column to evaluate interpolation at (if different from x)
     interp_method: Optional[str] = "linear"
     
     # Uncertainty properties
