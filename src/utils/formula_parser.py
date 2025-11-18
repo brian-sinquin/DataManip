@@ -1,5 +1,5 @@
 """
-Formula parser for DataTableV2.
+Formula parser for safe evaluation of mathematical expressions.
 
 This module provides safe AST-based formula parsing and evaluation for
 calculated columns. Formulas use {column_name} syntax for variable references.

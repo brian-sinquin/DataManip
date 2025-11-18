@@ -17,10 +17,6 @@ where:
 import ast
 import sympy as sp
 from typing import Dict, Union, Optional, Tuple, Any
-import pint
-
-# Import unit registry from formula_evaluator
-from widgets.AdvancedDataTableWidget.formula_evaluator import ureg
 
 
 class FormulaToSymPy:
@@ -240,123 +236,13 @@ class UncertaintyCalculator:
         except Exception as e:
             raise ValueError(f"Error calculating uncertainty: {str(e)}")
 
-    @classmethod
-    def calculate_uncertainty_with_units(
-        cls,
-        expression: str,
-        values: Dict[str, Tuple[float, Optional[str]]],
-        uncertainties: Dict[str, Tuple[float, Optional[str]]]
-    ) -> Tuple[float, str]:
-        """
-        Calculate the combined uncertainty with unit support.
-
-        Args:
-            expression: Mathematical expression string (e.g., "distance / time")
-            values: Dict mapping variable names to (value, unit) tuples
-            uncertainties: Dict mapping variable names to (uncertainty, unit) tuples
-
-        Returns:
-            Tuple of (combined_uncertainty_magnitude, uncertainty_unit_string)
-
-        Raises:
-            ValueError: If units are incompatible or expression is invalid
-        
-        Example:
-            >>> # Calculate uncertainty of velocity = distance / time
-            >>> UncertaintyCalculator.calculate_uncertainty_with_units(
-            ...     "distance / time",
-            ...     {"distance": (100, "m"), "time": (10, "s")},
-            ...     {"distance": (1, "m"), "time": (0.1, "s")}
-            ... )
-            (0.14..., 'meter / second')
-        """
-        try:
-            # Extract variable names and create Pint quantities
-            variable_names = list(values.keys())
-            
-            # Convert to SymPy expression
-            sympy_expr = FormulaToSymPy.convert(expression, variable_names)
-            
-            # Prepare values as plain numbers for SymPy
-            plain_values = {name: val for name, (val, _) in values.items()}
-            
-            # Calculate variance contributions with units
-            variance_contributions = []
-            result_unit = None
-            
-            # First, determine the result unit by evaluating the formula with units
-            from widgets.AdvancedDataTableWidget.formula_evaluator import SafeFormulaEvaluator
-            _, result_unit_str = SafeFormulaEvaluator.evaluate_with_units(
-                expression, 
-                values
-            )
-            if result_unit_str:
-                result_unit = ureg.parse_expression(result_unit_str)
-            else:
-                result_unit = ureg.dimensionless
-            
-            for var_name in variable_names:
-                if var_name not in uncertainties:
-                    continue
-                
-                # Get the SymPy symbol for this variable
-                var_symbol = sp.Symbol(var_name)
-                
-                # Calculate partial derivative ∂f/∂xᵢ
-                partial_derivative = sp.diff(sympy_expr, var_symbol)
-                
-                # Evaluate the partial derivative at the given values
-                subs_dict = {sp.Symbol(name): val for name, val in plain_values.items()}
-                derivative_value = float(partial_derivative.evalf(subs=subs_dict))
-                
-                # Create Pint quantities for the variable
-                var_value, var_unit = values[var_name]
-                var_uncertainty, unc_unit = uncertainties[var_name]
-                
-                # The uncertainty must have the same unit as the variable
-                if var_unit and unc_unit:
-                    unc_qty = ureg.Quantity(var_uncertainty, unc_unit)
-                    # Convert uncertainty to same unit as variable
-                    unc_qty = unc_qty.to(var_unit)
-                elif var_unit:
-                    unc_qty = ureg.Quantity(var_uncertainty, var_unit)
-                else:
-                    unc_qty = ureg.Quantity(var_uncertainty, 'dimensionless')
-                
-                # Calculate the partial derivative's units
-                # ∂f/∂xᵢ has units of [result] / [variable]
-                if var_unit:
-                    var_unit_qty = ureg.Quantity(1.0, var_unit)
-                else:
-                    var_unit_qty = ureg.Quantity(1.0, 'dimensionless')
-                
-                # derivative_units = result_unit / var_unit
-                derivative_qty = ureg.Quantity(derivative_value, result_unit / var_unit_qty.units)
-                
-                # ∂f/∂xᵢ * δxᵢ has units of [result]
-                contribution_qty = derivative_qty * unc_qty
-                
-                # Ensure contribution is in result units (should already be, but verify)
-                if not result_unit.dimensionless:
-                    contribution_qty = contribution_qty.to(result_unit)
-                
-                variance_contributions.append(contribution_qty.magnitude ** 2)
-            
-            # Combined uncertainty: sqrt(Σ(contributions²))
-            combined_variance = sum(variance_contributions)
-            combined_uncertainty = combined_variance ** 0.5
-            
-            # Format the result unit
-            if result_unit and not result_unit.dimensionless:
-                from utils.units import format_pint_unit
-                unit_str = format_pint_unit(result_unit, use_dot=True, use_superscript=True)
-            else:
-                unit_str = ''
-            
-            return (combined_uncertainty, unit_str)
-            
-        except Exception as e:
-            raise ValueError(f"Error calculating uncertainty with units: {str(e)}")
+    # NOTE: Unit-aware calculation is not currently used and requires pint + formula_evaluator
+    # Commented out to avoid import errors. Can be re-enabled if needed.
+    #
+    # @classmethod
+    # def calculate_uncertainty_with_units(...):
+    #     """Calculate the combined uncertainty with unit support."""
+    #     ...
 
     @classmethod
     def get_partial_derivatives(

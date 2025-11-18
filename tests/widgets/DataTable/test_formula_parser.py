@@ -21,7 +21,7 @@ import pytest
 import numpy as np
 import pandas as pd
 
-from widgets.DataTable.formula_parser import (
+from utils.formula_parser import (
     FormulaParser,
     FormulaError,
     FormulaSyntaxError,

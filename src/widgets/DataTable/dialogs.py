@@ -24,37 +24,11 @@ from typing import Optional, Dict, Any, List, TYPE_CHECKING
 import math
 
 from .column_metadata import ColumnType, DataType
+from utils.constants import COMMON_UNITS
+from utils.validation import validate_identifier_name
 
 if TYPE_CHECKING:
     from .column_metadata import ColumnMetadata
-
-
-# Common units for quick selection
-COMMON_UNITS = [
-    "",  # No unit
-    # Length
-    "m", "cm", "mm", "μm", "nm", "km", "in", "ft",
-    # Mass
-    "kg", "g", "mg", "μg", "lb", "oz",
-    # Time
-    "s", "ms", "μs", "ns", "min", "h", "day",
-    # Temperature
-    "K", "°C", "°F",
-    # Pressure
-    "Pa", "kPa", "MPa", "bar", "atm", "psi", "mmHg",
-    # Volume
-    "L", "mL", "μL", "m³", "cm³",
-    # Energy
-    "J", "kJ", "MJ", "eV", "keV", "MeV", "cal", "kcal",
-    # Power
-    "W", "kW", "MW", "hp",
-    # Electric
-    "V", "mV", "A", "mA", "μA", "Ω", "kΩ", "MΩ",
-    # Frequency
-    "Hz", "kHz", "MHz", "GHz",
-    # Other
-    "mol", "rad", "deg", "%", "ppm"
-]
 
 
 class AddDataColumnDialog(QDialog):
@@ -224,27 +198,24 @@ class AddDataColumnDialog(QDialog):
             self.ok_button.setEnabled(False)
             return False
         
-        # In edit mode, exclude current name from duplicate check
-        existing = [n for n in self.existing_names if not (self.is_edit_mode and 
-                    self.column_metadata is not None and n == self.column_metadata.name)]
+        # Use centralized validation
+        current_name = self.column_metadata.name if (self.is_edit_mode and self.column_metadata) else None
+        is_valid, error_msg = validate_identifier_name(
+            name,
+            existing_names=self.existing_names,
+            current_name=current_name
+        )
         
-        # Check for duplicates
-        if name in existing:
-            self.name_error_label.setText(f"⚠ Column '{name}' already exists")
+        if is_valid:
+            self.name_error_label.setText("✓ Valid name")
+            self.name_error_label.setStyleSheet("color: green; font-size: 9pt;")
+            self.ok_button.setEnabled(True)
+            return True
+        else:
+            self.name_error_label.setText(f"⚠ {error_msg}")
+            self.name_error_label.setStyleSheet("color: red; font-size: 9pt;")
             self.ok_button.setEnabled(False)
             return False
-        
-        # Check for invalid characters
-        if not name.replace("_", "").replace("-", "").isalnum():
-            self.name_error_label.setText("⚠ Name should only contain letters, numbers, _, -")
-            self.ok_button.setEnabled(False)
-            return False
-        
-        # Valid
-        self.name_error_label.setText("✓ Valid name")
-        self.name_error_label.setStyleSheet("color: green; font-size: 9pt;")
-        self.ok_button.setEnabled(True)
-        return True
     
     def _load_existing_values(self):
         """Load existing column values when in edit mode."""
@@ -604,27 +575,24 @@ class AddCalculatedColumnDialog(QDialog):
             self._update_ok_button()
             return False
         
-        # In edit mode, exclude current name from duplicate check
-        existing = [n for n in self.existing_names if not (self.is_edit_mode and 
-                    self.column_metadata is not None and n == self.column_metadata.name)]
+        # Use centralized validation
+        current_name = self.column_metadata.name if (self.is_edit_mode and self.column_metadata) else None
+        is_valid, error_msg = validate_identifier_name(
+            name,
+            existing_names=self.existing_names,
+            current_name=current_name
+        )
         
-        # Check for duplicates
-        if name in existing:
-            self.name_error_label.setText(f"⚠ Column '{name}' already exists")
+        if is_valid:
+            self.name_error_label.setText("✓ Valid name")
+            self.name_error_label.setStyleSheet("color: green; font-size: 9pt;")
+            self._update_ok_button()
+            return True
+        else:
+            self.name_error_label.setText(f"⚠ {error_msg}")
+            self.name_error_label.setStyleSheet("color: red; font-size: 9pt;")
             self._update_ok_button()
             return False
-        
-        # Check for invalid characters
-        if not name.replace("_", "").replace("-", "").isalnum():
-            self.name_error_label.setText("⚠ Name should only contain letters, numbers, _, -")
-            self._update_ok_button()
-            return False
-        
-        # Valid
-        self.name_error_label.setText("✓ Valid name")
-        self.name_error_label.setStyleSheet("color: green; font-size: 9pt;")
-        self._update_ok_button()
-        return True
     
     def _load_existing_values(self):
         """Load existing column values when in edit mode."""
@@ -942,27 +910,24 @@ class AddRangeColumnDialog(QDialog):
             self._update_ok_button()
             return False
         
-        # In edit mode, exclude current name from duplicate check
-        existing = [n for n in self.existing_names if not (self.is_edit_mode and 
-                    self.column_metadata is not None and n == self.column_metadata.name)]
+        # Use centralized validation
+        current_name = self.column_metadata.name if (self.is_edit_mode and self.column_metadata) else None
+        is_valid, error_msg = validate_identifier_name(
+            name,
+            existing_names=self.existing_names,
+            current_name=current_name
+        )
         
-        # Check for duplicates
-        if name in existing:
-            self.name_error_label.setText(f"⚠ Column '{name}' already exists")
+        if is_valid:
+            self.name_error_label.setText("✓ Valid name")
+            self.name_error_label.setStyleSheet("color: green; font-size: 9pt;")
+            self._update_ok_button()
+            return True
+        else:
+            self.name_error_label.setText(f"⚠ {error_msg}")
+            self.name_error_label.setStyleSheet("color: red; font-size: 9pt;")
             self._update_ok_button()
             return False
-        
-        # Check for invalid characters
-        if not name.replace("_", "").replace("-", "").isalnum():
-            self.name_error_label.setText("⚠ Name should only contain letters, numbers, _, -")
-            self._update_ok_button()
-            return False
-        
-        # Valid
-        self.name_error_label.setText("✓ Valid name")
-        self.name_error_label.setStyleSheet("color: green; font-size: 9pt;")
-        self._update_ok_button()
-        return True
     
     def _load_existing_values(self):
         """Load existing column values when in edit mode."""
@@ -1240,25 +1205,27 @@ class AddDerivativeColumnDialog(QDialog):
     
     def _validate_and_update(self):
         """Validate inputs and update preview."""
-        # Validate name
+        # Validate name using centralized validation
         name = self.name_edit.text().strip()
         name_valid = False
         
         if not name:
             self.name_error_label.setText("")
         else:
-            # In edit mode, exclude current name from duplicate check
-            existing = [n for n in self.existing_names if not (self.is_edit_mode and 
-                        self.column_metadata is not None and n == self.column_metadata.name)]
+            current_name = self.column_metadata.name if (self.is_edit_mode and self.column_metadata) else None
+            is_valid, error_msg = validate_identifier_name(
+                name,
+                existing_names=self.existing_names,
+                current_name=current_name
+            )
             
-            if name in existing:
-                self.name_error_label.setText(f"⚠ Column '{name}' already exists")
-            elif not name.replace("_", "").replace("-", "").isalnum():
-                self.name_error_label.setText("⚠ Name should only contain letters, numbers, _, -")
-            else:
+            if is_valid:
                 self.name_error_label.setText("✓ Valid name")
                 self.name_error_label.setStyleSheet("color: green; font-size: 9pt;")
                 name_valid = True
+            else:
+                self.name_error_label.setText(f"⚠ {error_msg}")
+                self.name_error_label.setStyleSheet("color: red; font-size: 9pt;")
         
         # Validate column selections
         num_col = self.numerator_combo.currentData()
@@ -1511,25 +1478,27 @@ class AddInterpolationColumnDialog(QDialog):
     
     def _validate_and_update(self):
         """Validate inputs and update preview."""
-        # Validate name
+        # Validate name using centralized validation
         name = self.name_edit.text().strip()
         name_valid = False
         
         if not name:
             self.name_error_label.setText("")
         else:
-            # In edit mode, exclude current name from duplicate check
-            existing = [n for n in self.existing_names if not (self.is_edit_mode and 
-                        self.column_metadata is not None and n == self.column_metadata.name)]
+            current_name = self.column_metadata.name if (self.is_edit_mode and self.column_metadata) else None
+            is_valid, error_msg = validate_identifier_name(
+                name,
+                existing_names=self.existing_names,
+                current_name=current_name
+            )
             
-            if name in existing:
-                self.name_error_label.setText(f"⚠ Column '{name}' already exists")
-            elif not name.replace("_", "").replace("-", "").isalnum():
-                self.name_error_label.setText("⚠ Name should only contain letters, numbers, _, -")
-            else:
+            if is_valid:
                 self.name_error_label.setText("✓ Valid name")
                 self.name_error_label.setStyleSheet("color: green; font-size: 9pt;")
                 name_valid = True
+            else:
+                self.name_error_label.setText(f"⚠ {error_msg}")
+                self.name_error_label.setStyleSheet("color: red; font-size: 9pt;")
         
         # Validate column selections
         x_col = self.x_column_combo.currentData()

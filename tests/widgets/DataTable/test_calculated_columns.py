@@ -18,7 +18,7 @@ from PySide6.QtCore import Qt
 
 from widgets.DataTable.model import DataTableModel, ColumnNotFoundError
 from widgets.DataTable.column_metadata import ColumnType, DataType
-from widgets.DataTable.formula_parser import FormulaError
+from utils.formula_parser import FormulaError
 
 
 @pytest.fixture

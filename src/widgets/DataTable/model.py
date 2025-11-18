@@ -14,7 +14,7 @@ from scipy import interpolate
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, Signal
 
 from .column_metadata import ColumnType, ColumnMetadata, DataType
-from .formula_parser import FormulaParser, FormulaError, FormulaEvaluationError, FormulaSyntaxError
+from utils.formula_parser import FormulaParser, FormulaError, FormulaEvaluationError, FormulaSyntaxError
 
 
 # ============================================================================
@@ -2790,7 +2790,9 @@ class DataTableModel(QAbstractTableModel):
         Returns:
             Series of propagated uncertainties
         """
-        from .uncertainty_propagator import UncertaintyPropagator
+        # Import from centralized utils module
+        from utils.uncertainty import FormulaToSymPy
+        import sympy as sp
         
         metadata = self._metadata.get(column_name)
         if not metadata or not metadata.is_calculated_column() or not metadata.formula:
@@ -2820,15 +2822,74 @@ class DataTableModel(QAbstractTableModel):
         if not uncertainties:
             return pd.Series([0.0] * self._row_count)
         
-        # Calculate propagated uncertainty
+        # Calculate propagated uncertainty using centralized function
         try:
-            result = UncertaintyPropagator.calculate_uncertainty(
-                metadata.formula,
-                list(dependencies),
-                values,
-                uncertainties
-            )
-            return result
+            # Prepare formula by replacing {var} with var for SymPy
+            formula_for_sympy = metadata.formula
+            for dep in dependencies:
+                formula_for_sympy = formula_for_sympy.replace(f"{{{dep}}}", dep)
+            
+            # Convert to SymPy expression
+            sympy_expr = FormulaToSymPy.convert(formula_for_sympy, list(dependencies))
+            
+            # Calculate partial derivatives
+            partial_derivs = {}
+            for var_name in dependencies:
+                var_symbol = sp.Symbol(var_name)
+                partial_derivs[var_name] = sp.diff(sympy_expr, var_symbol)
+            
+            # Calculate uncertainty for each row
+            result_uncertainties = []
+            
+            for i in range(self._row_count):
+                # Get values for this row
+                row_values = {var: values[var].iloc[i] for var in dependencies}
+                row_uncerts = {var: uncertainties.get(var, pd.Series([0.0] * self._row_count)).iloc[i]
+                              for var in dependencies}
+                
+                # If any input value is NaN, result uncertainty is NaN
+                if any(pd.isna(row_values[var]) for var in dependencies):
+                    result_uncertainties.append(np.nan)
+                    continue
+                
+                # Calculate variance contributions
+                variance = 0.0
+                
+                for var_name in dependencies:
+                    # Skip if no uncertainty for this variable
+                    if var_name not in uncertainties:
+                        continue
+                    
+                    # Get value and uncertainty for this variable
+                    var_uncert = row_uncerts[var_name]
+                    
+                    # Skip if uncertainty is NaN
+                    if pd.isna(var_uncert):
+                        continue
+                    
+                    # Evaluate partial derivative at this point
+                    try:
+                        # Substitute all variable values
+                        subs_dict = {sp.Symbol(name): val for name, val in row_values.items()
+                                    if not pd.isna(val)}
+                        deriv_value = float(partial_derivs[var_name].evalf(subs=subs_dict))
+                        
+                        # Add contribution to variance: (∂f/∂xᵢ * δxᵢ)²
+                        contribution = deriv_value * var_uncert
+                        variance += contribution ** 2
+                        
+                    except Exception:
+                        # If evaluation fails (e.g., division by zero), mark as NaN
+                        variance = np.nan
+                        break
+                
+                # Combined uncertainty = sqrt(variance)
+                if pd.isna(variance):
+                    result_uncertainties.append(np.nan)
+                else:
+                    result_uncertainties.append(np.sqrt(variance))
+            
+            return pd.Series(result_uncertainties)
         except Exception as e:
             # If calculation fails, return NaN
             self.errorOccurred.emit(column_name, f"Uncertainty calculation failed: {e}")
