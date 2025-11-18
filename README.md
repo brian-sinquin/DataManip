@@ -1,4 +1,7 @@
 # DataManip
+
+[![Tests](https://github.com/brian-sinquin/DataManip/actions/workflows/tests.yml/badge.svg)](https://github.com/brian-sinquin/DataManip/actions/workflows/tests.yml)
+
 An open-source data manipulation software for experimental sciences
 
 ## Features
