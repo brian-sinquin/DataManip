@@ -14,6 +14,9 @@ from scipy import interpolate
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, Signal
 
 from .column_metadata import ColumnType, ColumnMetadata, DataType
+from models.data_store import DataStore
+from models.formula_engine import FormulaEngine
+from models.column_registry import ColumnRegistry
 from utils.formula_parser import FormulaParser, FormulaError, FormulaEvaluationError, FormulaSyntaxError
 from utils.exceptions import DataTableError, ColumnExistsError, ColumnNotFoundError, ColumnInUseError
 
@@ -91,28 +94,56 @@ class DataTableModel(QAbstractTableModel):
         # Configuration
         self._config = config or ModelConfig()
         
-        # Core data storage
-        self._columns: dict[str, pd.Series] = {}  # {name: Series}
-        self._metadata: dict[str, ColumnMetadata] = {}  # {name: metadata}
-        self._column_order: List[str] = []  # Ordered list of column names
+        # Domain models (Qt-independent)
+        self._data_store = DataStore()
+        self._formula_engine = FormulaEngine()
+        self._column_registry = ColumnRegistry()
+        
+        # Legacy references - delegate to domain models
+        # These properties provide backward compatibility during transition
         
         # State tracking
         self._row_count: int = 0
         
-        # Dependency tracking for calculated columns (Phase 2)
-        self._dependencies: dict[str, set[str]] = {}  # {col: {depends_on}}
-        self._dependents: dict[str, set[str]] = {}    # {col: {dependent_cols}}
-        
         # Global variables/constants for formulas
         self._variables: dict[str, tuple[float, Optional[str]]] = {}  # {name: (value, unit)}
         
-        # Formula parser
+        # Formula parser (still used for some operations)
         self._formula_parser = FormulaParser()
         
         # Undo/redo system (Phase 6)
         from utils.commands import CommandManager
         self._command_manager = CommandManager(max_history=100)
         self._bypass_undo = False  # Flag to bypass undo for internal operations
+    
+    # ========================================================================
+    # Legacy Property Accessors (for backward compatibility)
+    # ========================================================================
+    
+    @property
+    def _columns(self) -> dict[str, pd.Series]:
+        """Access data store columns (backward compatibility)."""
+        return self._data_store._columns
+    
+    @property
+    def _metadata(self) -> dict[str, ColumnMetadata]:
+        """Access column registry metadata (backward compatibility)."""
+        return self._column_registry._metadata
+    
+    @property
+    def _column_order(self) -> List[str]:
+        """Access column registry order (backward compatibility)."""
+        return self._column_registry._column_order
+    
+    @property
+    def _dependencies(self) -> dict[str, set[str]]:
+        """Access formula engine dependencies (backward compatibility)."""
+        return self._formula_engine._dependencies
+    
+    @property
+    def _dependents(self) -> dict[str, set[str]]:
+        """Access formula engine dependents (backward compatibility)."""
+        return self._formula_engine._dependents
     
     # ========================================================================
     # Qt Model Interface - Required Methods
