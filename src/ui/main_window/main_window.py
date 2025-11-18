@@ -12,9 +12,9 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QKeySequence
 
-import ui.message_boxes as mb
-from ui.AboutWindow import show_about_dialog
-from ui.PreferenceWindow import show_preference_window
+import ui.notifications as mb
+from ui.about_window import show_about_dialog
+from ui.preference_window import show_preference_window
 from utils.lang import get_lang_manager, tr
 from .menu_bar import MenuBar
 from .workspace import Workspace
