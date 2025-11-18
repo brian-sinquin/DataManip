@@ -5,11 +5,16 @@ This module provides Qt-independent data storage and manipulation.
 It can be used in CLI tools, web APIs, or any non-GUI context.
 """
 
-from typing import Optional, List, Dict, Any
+from __future__ import annotations
+from typing import Optional, List, Dict, Any, TYPE_CHECKING
 import pandas as pd
 import numpy as np
 
-from widgets.data_table.column_metadata import ColumnMetadata, ColumnType, DataType
+from constants.data_types import DataType
+
+if TYPE_CHECKING:
+    from widgets.data_table.column_metadata import ColumnMetadata
+
 from utils.exceptions import ColumnExistsError, ColumnNotFoundError
 
 
@@ -266,7 +271,7 @@ class DataStore:
     # Utility Methods
     # ========================================================================
     
-    def _get_pandas_dtype(self, dtype: DataType) -> str:
+    def _get_pandas_dtype(self, dtype: 'DataType') -> str:
         """Convert DataType enum to pandas dtype string.
         
         Args:

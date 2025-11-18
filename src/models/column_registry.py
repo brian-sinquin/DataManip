@@ -5,8 +5,15 @@ This module provides Qt-independent column metadata management with
 ordering, validation, and efficient lookups.
 """
 
-from typing import List, Optional, Dict, Set
-from widgets.data_table.column_metadata import ColumnMetadata, ColumnType, DataType
+from __future__ import annotations
+from typing import List, Optional, Dict, Set, TYPE_CHECKING, Any
+
+from constants.column_types import ColumnType
+from constants.data_types import DataType
+
+if TYPE_CHECKING:
+    from widgets.data_table.column_metadata import ColumnMetadata
+
 from utils.exceptions import ColumnExistsError, ColumnNotFoundError
 
 
@@ -371,7 +378,7 @@ class ColumnRegistry:
         """
         return self._metadata.copy()
     
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Export registry to dictionary.
         
         Returns:

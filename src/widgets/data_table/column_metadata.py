@@ -5,33 +5,11 @@ This module defines the column types and metadata structure used in the new
 data table implementation.
 """
 
-from enum import Enum
 from dataclasses import dataclass, field
 from typing import Optional
 
-
-class ColumnType(Enum):
-    """Types of columns in the data table."""
-    
-    DATA = "data"           # User-editable data column
-    CALCULATED = "calc"     # Formula-based calculated column
-    DERIVATIVE = "deriv"    # Discrete derivative (dy/dx)
-    RANGE = "range"         # Evenly-spaced values
-    INTERPOLATION = "interp"  # Interpolated values
-    UNCERTAINTY = "unc"     # Uncertainty/error column
-
-
-class DataType(Enum):
-    """Data types for column storage.
-    
-    These map to Pandas/NumPy dtypes for efficient storage and computation.
-    """
-    
-    FLOAT = "float64"       # Floating point numbers (default for calculations)
-    INTEGER = "int64"       # Integer numbers (counts, IDs, etc.)
-    STRING = "object"       # Text data
-    CATEGORY = "category"   # Categorical data (efficient for repeated values)
-    BOOLEAN = "bool"        # True/False values
+from constants.column_types import ColumnType
+from constants.data_types import DataType
 
 
 @dataclass
