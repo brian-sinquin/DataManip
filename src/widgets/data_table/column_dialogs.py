@@ -631,15 +631,18 @@ class AddCalculatedColumnDialog(QDialog):
             self._update_ok_button()
             return False
         
-        # Check if referenced columns exist
+        # Check if referenced columns/variables exist
         import re
         refs = re.findall(r'\{([^}]+)\}', formula)
         if self.model:
             available_cols = self.model.get_column_names()
-            missing_cols = [ref for ref in refs if ref not in available_cols]
-            if missing_cols:
+            # Also check variables
+            variables = self.model.get_variables()
+            available_names = set(available_cols) | set(variables.keys())
+            missing_names = [ref for ref in refs if ref not in available_names]
+            if missing_names:
                 self.formula_error_label.setText(
-                    f"⚠ Unknown column(s): {', '.join(missing_cols)}"
+                    f"⚠ Unknown column(s)/variable(s): {', '.join(missing_names)}"
                 )
                 self._update_ok_button()
                 return False
@@ -1140,19 +1143,14 @@ class AddDerivativeColumnDialog(QDialog):
         
         # Numerator (dy)
         self.numerator_combo = QComboBox()
-        self.numerator_combo.currentIndexChanged.connect(self._validate_and_update)
         derivative_layout.addRow("Numerator (dy)*:", self.numerator_combo)
         
         # Denominator (dx)
         self.denominator_combo = QComboBox()
-        self.denominator_combo.currentIndexChanged.connect(self._validate_and_update)
         derivative_layout.addRow("Denominator (dx)*:", self.denominator_combo)
         
         derivative_group.setLayout(derivative_layout)
         layout.addWidget(derivative_group)
-        
-        # Populate combos
-        self._populate_column_combos()
         
         # Preview
         preview_group = QGroupBox("Preview")
@@ -1166,6 +1164,13 @@ class AddDerivativeColumnDialog(QDialog):
         
         preview_group.setLayout(preview_layout)
         layout.addWidget(preview_group)
+        
+        # Populate combos (before connecting signals to avoid AttributeError)
+        self._populate_column_combos()
+        
+        # Connect signals after all widgets are created
+        self.numerator_combo.currentIndexChanged.connect(self._validate_and_update)
+        self.denominator_combo.currentIndexChanged.connect(self._validate_and_update)
         
         # Buttons
         button_box = QDialogButtonBox(
@@ -1395,12 +1400,10 @@ class AddInterpolationColumnDialog(QDialog):
         
         # X column (independent variable)
         self.x_column_combo = QComboBox()
-        self.x_column_combo.currentIndexChanged.connect(self._validate_and_update)
         source_layout.addRow("X Column (data)*:", self.x_column_combo)
         
         # Y column (dependent variable)
         self.y_column_combo = QComboBox()
-        self.y_column_combo.currentIndexChanged.connect(self._validate_and_update)
         source_layout.addRow("Y Column (data)*:", self.y_column_combo)
         
         source_group.setLayout(source_layout)
@@ -1420,9 +1423,6 @@ class AddInterpolationColumnDialog(QDialog):
         method_group.setLayout(method_layout)
         layout.addWidget(method_group)
         
-        # Populate combos
-        self._populate_column_combos()
-        
         # Preview
         preview_group = QGroupBox("Preview")
         preview_layout = QFormLayout()
@@ -1435,6 +1435,13 @@ class AddInterpolationColumnDialog(QDialog):
         
         preview_group.setLayout(preview_layout)
         layout.addWidget(preview_group)
+        
+        # Populate combos (before connecting signals to avoid AttributeError)
+        self._populate_column_combos()
+        
+        # Connect signals after all widgets are created
+        self.x_column_combo.currentIndexChanged.connect(self._validate_and_update)
+        self.y_column_combo.currentIndexChanged.connect(self._validate_and_update)
         
         # Buttons
         button_box = QDialogButtonBox(
