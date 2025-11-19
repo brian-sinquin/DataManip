@@ -38,20 +38,21 @@
 - Axis inversion support
 - Grid line customization (major, minor, both, none)
 - Unit-aware labels with automatic formatting
+- **Secondary Y-Axis Support**: Plot series with different units on a secondary Y-axis (twinx), with independent configuration and legend
+- **Unit Compatibility Validation**: Prevent plotting series with incompatible units on the same axis; suggest secondary axis when needed
+- **Minimal Navigation Toolbar**: Only Home, Pan, and Zoom buttons shown for cleaner UI
 
 ## Bug fixes
+
+- **Derivative Calculation**: Fixed bug where derivative columns lost two points (first and last); now only one empty value at the correct boundary for each method
+- **Derivative Recalculation**: Ensured recalculation uses the correct method and preserves NaN placement
+- **Interpolation Columns**: Fixed NaN preservation and method-specific validation
+- **Dialog AttributeError**: Fixed signal connection timing in derivative/interpolation dialogs
+- **Import Errors**: Fixed all snake_case import paths
 
 ## Enhancements
 
 ### Testing
 - **Plot Widget Tests**: Added comprehensive unit test suite with 82 tests
-  - `test_series_metadata.py`: Tests for SeriesMetadata, PlotStyle, MarkerStyle, LineStyle enums (35+ tests)
-  - `test_plot_config.py`: Tests for PlotConfig, AxisConfig, LegendConfig, and related enums (30+ tests)
-  - `test_plot_model.py`: Tests for PlotModel business logic (33+ tests)
-    - Series management (add, remove, update, rename)
-    - Data extraction and validation
-    - Configuration management
-    - Auto-configuration from DataTable
-    - Serialization/deserialization
-    - DataTable event handling (column renames, deletions)
-  - All tests passing, following DataTable test patterns
+- **Derivative Column Tests**: 30+ tests for all difference methods and edge cases
+- **Full DataTable/Plot Integration**: All tests passing, including recalculation and dependency handling

@@ -64,6 +64,7 @@ class ColumnMetadata:
     # Derivative properties
     derivative_numerator: Optional[str] = None
     derivative_denominator: Optional[str] = None
+    derivative_method: Optional[str] = "forward"  # Differentiation method: 'forward', 'backward', 'central'
     
     # Range properties
     range_start: Optional[float] = None

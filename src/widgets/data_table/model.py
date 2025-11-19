@@ -988,24 +988,42 @@ class DataTableModel(QAbstractTableModel):
             raise ValueError(f"Denominator column '{denominator}' must be numeric")
         
         # Calculate derivative using specified method
+        # Note: Each method loses points at boundaries where differences can't be computed
+        n = len(y_data)
+        derivative = pd.Series([np.nan] * n, dtype=float)
+        
         if method == "forward":
-            dy = y_data.diff().shift(-1)  # y[i+1] - y[i]
-            dx = x_data.diff().shift(-1)  # x[i+1] - x[i]
+            # dy/dx[i] = (y[i+1] - y[i]) / (x[i+1] - x[i])
+            # Valid for i = 0 to n-2 (loses last point)
+            for i in range(n - 1):
+                dy = y_data.iloc[i + 1] - y_data.iloc[i]
+                dx = x_data.iloc[i + 1] - x_data.iloc[i]
+                if dx != 0:
+                    derivative.iloc[i] = dy / dx
+                else:
+                    derivative.iloc[i] = np.nan
+        
         elif method == "backward":
-            dy = y_data.diff()  # y[i] - y[i-1]
-            dx = x_data.diff()  # x[i] - x[i-1]
+            # dy/dx[i] = (y[i] - y[i-1]) / (x[i] - x[i-1])
+            # Valid for i = 1 to n-1 (loses first point)
+            for i in range(1, n):
+                dy = y_data.iloc[i] - y_data.iloc[i - 1]
+                dx = x_data.iloc[i] - x_data.iloc[i - 1]
+                if dx != 0:
+                    derivative.iloc[i] = dy / dx
+                else:
+                    derivative.iloc[i] = np.nan
+        
         else:  # central
-            dy = y_data.diff().shift(-1) + y_data.diff()  # y[i+1] - y[i-1]
-            dx = x_data.diff().shift(-1) + x_data.diff()  # x[i+1] - x[i-1]
-        
-        # Compute derivative (handle division by zero)
-        with np.errstate(divide='ignore', invalid='ignore'):
-            dy_arr = np.asarray(dy, dtype=float)
-            dx_arr = np.asarray(dx, dtype=float)
-            derivative = pd.Series(dy_arr / dx_arr, dtype=float)
-        
-        # Replace inf/nan at boundaries with NaN
-        derivative = derivative.replace([np.inf, -np.inf], np.nan)
+            # dy/dx[i] = (y[i+1] - y[i-1]) / (x[i+1] - x[i-1])
+            # Valid for i = 1 to n-2 (loses first and last points)
+            for i in range(1, n - 1):
+                dy = y_data.iloc[i + 1] - y_data.iloc[i - 1]
+                dx = x_data.iloc[i + 1] - x_data.iloc[i - 1]
+                if dx != 0:
+                    derivative.iloc[i] = dy / dx
+                else:
+                    derivative.iloc[i] = np.nan
         
         # Auto-calculate unit if not provided
         if unit is None:
@@ -1028,6 +1046,7 @@ class DataTableModel(QAbstractTableModel):
             description=description,
             derivative_numerator=numerator,
             derivative_denominator=denominator,
+            derivative_method=method,  # Store the method for recalculation
             precision=precision if precision is not None else 6
         )
         
@@ -2080,23 +2099,48 @@ class DataTableModel(QAbstractTableModel):
             try:
                 numerator = metadata.derivative_numerator
                 denominator = metadata.derivative_denominator
+                method = metadata.derivative_method or "forward"  # Default to forward if not stored
                 
                 # Get source column data
                 y_data = self._columns[numerator]
                 x_data = self._columns[denominator]
                 
-                # Calculate derivative (default to forward method for recalculation)
-                dy = y_data.diff().shift(-1)  # y[i+1] - y[i]
-                dx = x_data.diff().shift(-1)  # x[i+1] - x[i]
+                # Calculate derivative using specified method (same logic as add_derivative_column)
+                n = len(y_data)
+                derivative = pd.Series([np.nan] * n, dtype=float)
                 
-                # Compute derivative
-                with np.errstate(divide='ignore', invalid='ignore'):
-                    dy_arr = np.asarray(dy, dtype=float)
-                    dx_arr = np.asarray(dx, dtype=float)
-                    derivative = pd.Series(dy_arr / dx_arr, dtype=float)
+                if method == "forward":
+                    # dy/dx[i] = (y[i+1] - y[i]) / (x[i+1] - x[i])
+                    # Valid for i = 0 to n-2 (loses last point)
+                    for i in range(n - 1):
+                        dy = y_data.iloc[i + 1] - y_data.iloc[i]
+                        dx = x_data.iloc[i + 1] - x_data.iloc[i]
+                        if dx != 0:
+                            derivative.iloc[i] = dy / dx
+                        else:
+                            derivative.iloc[i] = np.nan
                 
-                # Replace inf with NaN
-                derivative = derivative.replace([np.inf, -np.inf], np.nan)
+                elif method == "backward":
+                    # dy/dx[i] = (y[i] - y[i-1]) / (x[i] - x[i-1])
+                    # Valid for i = 1 to n-1 (loses first point)
+                    for i in range(1, n):
+                        dy = y_data.iloc[i] - y_data.iloc[i - 1]
+                        dx = x_data.iloc[i] - x_data.iloc[i - 1]
+                        if dx != 0:
+                            derivative.iloc[i] = dy / dx
+                        else:
+                            derivative.iloc[i] = np.nan
+                
+                else:  # central
+                    # dy/dx[i] = (y[i+1] - y[i-1]) / (x[i+1] - x[i-1])
+                    # Valid for i = 1 to n-2 (loses first and last points)
+                    for i in range(1, n - 1):
+                        dy = y_data.iloc[i + 1] - y_data.iloc[i - 1]
+                        dx = x_data.iloc[i + 1] - x_data.iloc[i - 1]
+                        if dx != 0:
+                            derivative.iloc[i] = dy / dx
+                        else:
+                            derivative.iloc[i] = np.nan
                 
                 # Update column data
                 self._columns[name] = derivative
