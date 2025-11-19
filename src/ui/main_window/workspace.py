@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt
 
 from utils.lang import get_lang_manager, tr
 from widgets import DataTableWidget, DataTableModel
-from widgets.plot_widget import AdvancedDataTablePlotWidget
+from widgets.plot_widget import PlotWidget
 from widgets.statistics_widget import AdvancedDataTableStatisticsWidget
 
 class Workspace(QWidget):
@@ -63,13 +63,18 @@ class Workspace(QWidget):
         self.toolbar = self.table.create_toolbar()
         data_tab_layout.insertWidget(0, self.toolbar)  # Insert at top
         
-        # Create Plotting tab with the plot widget
+        # Create Plotting tab with the enhanced plot widget
         self.plot_tab = QWidget()
         plot_tab_layout = QVBoxLayout()
         self.plot_tab.setLayout(plot_tab_layout)
         
-        # Plot widget now updated for new DataTable API
-        self.plot_widget = AdvancedDataTablePlotWidget(self.table)
+        # Enhanced plot widget with model-view separation
+        self.plot_widget = PlotWidget(datatable=self.table)
+        
+        # Create and add plot toolbar
+        from widgets.plot_widget import PlotToolbar
+        self.plot_toolbar = PlotToolbar(self.plot_widget)
+        plot_tab_layout.addWidget(self.plot_toolbar)
         plot_tab_layout.addWidget(self.plot_widget)
         
         # Create Statistics tab

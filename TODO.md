@@ -1,79 +1,117 @@
 # TODO.md
 
-## Migration to DataTable (Nov 2025)
+## Recent Achievements (November 2025) ✅
 
-### Completed ✅
-- [x] **DataTable Implementation** - Complete Model/View architecture with Pandas backend
-- [x] **Feature Parity** - All AdvancedDataTableWidget features migrated:
-  - Global variables/constants system (VariablesDialog)
-  - Manual uncertainty columns (AddUncertaintyColumnDialog)
-  - Toolbar with column type dropdown
-  - Auto-row creation on Enter key
-  - Column insertion positioning control
-- [x] **Full Migration** - Renamed DataTableV2 → DataTable, deleted AdvancedDataTableWidget
-- [x] **Physics Examples** - 4 comprehensive examples reimplemented:
-  - Projectile Motion (baseball trajectory)
-  - Ideal Gas Law (PV=nRT)
-  - Simple Harmonic Motion (mass-spring)
-  - RC Circuit Charging (capacitor)
-- [x] **Plot Widget** - Updated AdvancedDataTablePlotWidget for new API
-- [x] **Statistics Widget** - Updated AdvancedDataTableStatisticsWidget for new API
-- [x] **Application Running** - Full functionality across all 3 tabs (Data, Plotting, Statistics)
+### Architecture Refactoring
+- [x] **Snake_case Migration** - Renamed all PascalCase packages to snake_case (DataTable→data_table, etc.)
+- [x] **Domain Model Extraction** - Separated pure logic from Qt:
+  - DataStore (310 lines) - Pure Pandas/NumPy storage
+  - FormulaEngine (354 lines) - Formula evaluation and dependencies
+  - ColumnRegistry (446 lines) - Metadata management
+- [x] **Constants Package** - Centralized ColumnType, DataType, symbols, and units
+- [x] **Models Package** - Qt-independent domain logic (1,110 lines extracted)
+- [x] **Circular Import Fix** - Resolved models↔widgets circular dependency
 
-### Test Coverage
-- 348+ tests in tests/widgets/DataTable/
-- All major features tested (formulas, derivatives, uncertainty, file I/O)
+### Testing & CI
+- [x] **Test Coverage** - 407 tests passing (351 DataTable + 56 models)
+- [x] **GitHub Actions CI** - Automated testing on push/PR
+  - Multi-OS: Ubuntu, Windows, macOS
+  - Multi-Python: 3.11, 3.12
+  - Qt headless support with Xvfb
+- [x] **Test Badge** - CI status badge in README
 
-## Bugs (Legacy - mostly resolved in DataTable)
+### Bug Fixes
+- [x] **Interpolation Columns** - Fixed eval_column support, NaN preservation, method-specific validation
+- [x] **Formula Validation** - Now recognizes variables in addition to columns
+- [x] **Dialog AttributeError** - Fixed signal connection timing in derivative/interpolation dialogs
+- [x] **Import Errors** - Fixed all snake_case import paths
 
-- [ ] Better unit calculation and printing, still some printing issues
-- [ ] Derivative columns n-1 values, empty last instead of first
-- [x] Avalanche update on range changes - FIXED: Recursive dependency propagation
-- [x] Formula derivative propagation - FIXED: Empty cell handling
+### DataTable Implementation
+- [x] **Complete Feature Parity** - All features from AdvancedDataTableWidget migrated
+- [x] **6 Column Types** - DATA, CALCULATED, DERIVATIVE, RANGE, INTERPOLATION, UNCERTAINTY
+- [x] **Physics Examples** - 4 comprehensive examples working
+- [x] **Full Application** - Data, Plotting, and Statistics tabs functional
 
-## Open Issues
+## Current Issues
 
-- [ ] Better new row injection UX
-- [x] Remove old toolbar - DONE: New toolbar with dropdown
-- [ ] Translation updates for DataTable (low priority)
+### Known Bugs
+- [ ] Better unit calculation and printing (some printing issues remain)
+- [ ] Derivative columns n-1 values (empty last row instead of first)
 
-## Features
 
-### Implemented ✅
-- [x] CSV/Excel import/export (DataTable file I/O)
-- [x] Plotting widget with uncertainty support
-- [x] Statistics widget (14+ measures, histograms, box plots)
-- [x] Undo/Redo (Qt command pattern)
-- [x] Global variables for formulas
-- [x] Manual uncertainty columns
-- [x] Column type dropdown toolbar
+### Translation
+- [ ] Update translations for snake_case module names (low priority)
+- [ ] Complete translation coverage for DataTable dialogs
 
-### Planned
-- [ ] Additional examples:
+## Planned Features
+
+### Examples & Documentation
+- [ ] Additional physics examples:
   - Free fall with air resistance
   - Damped harmonic oscillator
   - Electric field from point charges
   - Chemical kinetics (reaction rates)
-- [ ] Plot enhancements:
-  - Multi-series plotting
-  - Curve fitting overlay
-  - Export plots as images
-- [ ] Statistics enhancements:
-  - Correlation analysis between columns
-  - Regression analysis
-  - Normality tests
+- [ ] User guide with step-by-step tutorials
+- [ ] Formula syntax reference
+- [ ] API documentation for domain models
 
-## Short term
+### Plotting Enhancements
+- [ ] Multi-series plotting with legend
+- [ ] Curve fitting overlay (linear, polynomial, exponential)
+- [ ] Export plots as PNG/SVG
+- [ ] Zoom/pan controls
+- [ ] Plot styling options
+
+### Statistics Enhancements
+- [ ] Correlation matrix between columns
+- [ ] Linear/polynomial regression analysis
+- [ ] Normality tests (Shapiro-Wilk, Anderson-Darling)
+- [ ] ANOVA for comparing groups
+- [ ] Export statistics reports
+
+### Code Quality
 - [ ] Expand unit test coverage to 500+ tests
-- [ ] Add CI/CD pipeline (GitHub Actions)
+- [ ] Integration tests for full workflows
 - [ ] Performance profiling for large datasets (10k+ rows)
-- [ ] Documentation:
-  - User guide with examples
-  - API documentation
-  - Formula syntax reference
+- [ ] Type hint coverage analysis
+- [ ] Documentation coverage
 
-## Long term
+## Long-Term Vision
+
+### Architecture
 - [ ] Plugin system for custom column types
-- [ ] Scripting interface (Python API for automation)
+- [ ] Event-driven architecture for better extensibility
+- [ ] Async operations for large datasets
+- [ ] Memory-efficient streaming for huge files
+
+### Automation & Scripting
+- [ ] Python API for automation (headless mode)
+- [ ] Batch processing scripts
+- [ ] Command-line interface
+- [ ] Jupyter notebook integration
+
+### Advanced Features
+- [ ] Multi-table support (relationships between tables)
+- [ ] Database connectivity (SQLite, PostgreSQL)
+- [ ] Real-time data streaming
+- [ ] Collaborative editing (multi-user)
+
+### Distribution
+- [ ] Portable executable builds (PyInstaller/Nuitka)
 - [ ] Web version (PyScript/WASM)
-- [ ] Zig build optimization for performance-critical paths
+- [ ] Package distribution (pip, conda)
+- [ ] Docker containerization
+
+### Performance
+- [ ] Zig build optimization for critical paths
+- [ ] Numba JIT compilation for formulas
+- [ ] GPU acceleration for large computations
+- [ ] Lazy evaluation for calculated columns
+
+## Short-Term Priorities
+
+1. **Fix remaining bugs** (unit printing, derivative row indexing)
+2. **Add 2-3 more physics examples** (demonstrate capabilities)
+3. **Write user guide** (getting started, tutorials)
+4. **Performance testing** (10k+ rows, complex formulas)
+5. **Windows/macOS CI validation** (ensure cross-platform stability)
