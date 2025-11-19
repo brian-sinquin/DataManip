@@ -20,6 +20,14 @@ from .series_metadata import PlotStyle, SeriesMetadata
 from .plot_config import GridStyle
 
 
+class MinimalNavigationToolbar(NavigationToolbar):
+    """Minimal navigation toolbar with only zoom, pan, and home buttons."""
+    
+    # Only keep zoom, pan, and home tools
+    toolitems = [t for t in NavigationToolbar.toolitems if
+                 t[0] in ('Home', 'Pan', 'Zoom')]
+
+
 class PlotView(QWidget):
     """View for rendering plots from PlotModel.
     
@@ -72,9 +80,10 @@ class PlotView(QWidget):
         
         # Create axes
         self.ax = self.figure.add_subplot(111)
+        self.ax2 = None  # Secondary y-axis (created when needed)
         
-        # Add navigation toolbar
-        self.toolbar = NavigationToolbar(self.canvas, self)
+        # Add minimal navigation toolbar (only zoom, pan, home)
+        self.toolbar = MinimalNavigationToolbar(self.canvas, self)
         
         layout.addWidget(self.toolbar)
         layout.addWidget(self.canvas)
@@ -143,6 +152,9 @@ class PlotView(QWidget):
         
         # Clear axes
         self.ax.clear()
+        if self.ax2:
+            self.ax2.remove()
+            self.ax2 = None
         
         # Get all series data
         all_series_data = self._plot_model.get_all_series_data()
@@ -150,6 +162,15 @@ class PlotView(QWidget):
         if not all_series_data:
             self._render_empty_plot()
             return
+        
+        # Check if we need secondary y-axis
+        has_secondary = any(
+            self._plot_model.get_series(series_name).use_secondary_y_axis
+            for series_name, _, _, _, _ in all_series_data
+        )
+        
+        if has_secondary:
+            self.ax2 = self.ax.twinx()
         
         # Render each series
         for series_name, x_data, y_data, x_error, y_error in all_series_data:
@@ -174,6 +195,9 @@ class PlotView(QWidget):
             x_error: X error array (or None)
             y_error: Y error array (or None)
         """
+        # Select the appropriate axis (primary or secondary y-axis)
+        ax = self.ax2 if (series.use_secondary_y_axis and self.ax2) else self.ax
+        
         # Determine plot style
         plot_style = series.plot_style
         
@@ -187,41 +211,41 @@ class PlotView(QWidget):
         
         # Render based on plot style
         if plot_style == PlotStyle.LINE:
-            self._render_line(x_data, y_data, series, plot_kwargs)
+            self._render_line(ax, x_data, y_data, series, plot_kwargs)
         
         elif plot_style == PlotStyle.SCATTER:
-            self._render_scatter(x_data, y_data, series, plot_kwargs)
+            self._render_scatter(ax, x_data, y_data, series, plot_kwargs)
         
         elif plot_style == PlotStyle.LINE_SCATTER:
-            self._render_line_scatter(x_data, y_data, series, plot_kwargs)
+            self._render_line_scatter(ax, x_data, y_data, series, plot_kwargs)
         
         elif plot_style == PlotStyle.BAR:
-            self._render_bar(x_data, y_data, series, plot_kwargs)
+            self._render_bar(ax, x_data, y_data, series, plot_kwargs)
         
         elif plot_style == PlotStyle.STEP:
-            self._render_step(x_data, y_data, series, plot_kwargs)
+            self._render_step(ax, x_data, y_data, series, plot_kwargs)
         
         elif plot_style == PlotStyle.ERRORBAR:
-            self._render_errorbar(x_data, y_data, x_error, y_error, series, plot_kwargs)
+            self._render_errorbar(ax, x_data, y_data, x_error, y_error, series, plot_kwargs)
         
         # Add error bars if configured
         if series.has_error_bars() and plot_style != PlotStyle.ERRORBAR:
-            self._add_error_bars(x_data, y_data, x_error, y_error, series)
+            self._add_error_bars(ax, x_data, y_data, x_error, y_error, series)
     
-    def _render_line(self, x_data: np.ndarray, y_data: np.ndarray,
+    def _render_line(self, ax, x_data: np.ndarray, y_data: np.ndarray,
                      series: SeriesMetadata, plot_kwargs: dict):
         """Render line plot."""
-        self.ax.plot(
+        ax.plot(
             x_data, y_data,
             linestyle=series.line_style.value,
             linewidth=series.line_width,
             **plot_kwargs
         )
     
-    def _render_scatter(self, x_data: np.ndarray, y_data: np.ndarray,
+    def _render_scatter(self, ax, x_data: np.ndarray, y_data: np.ndarray,
                         series: SeriesMetadata, plot_kwargs: dict):
         """Render scatter plot."""
-        self.ax.scatter(
+        ax.scatter(
             x_data, y_data,
             marker=series.marker_style.value,
             s=series.marker_size**2,  # s is area, not diameter
@@ -230,11 +254,11 @@ class PlotView(QWidget):
             **plot_kwargs
         )
     
-    def _render_line_scatter(self, x_data: np.ndarray, y_data: np.ndarray,
+    def _render_line_scatter(self, ax, x_data: np.ndarray, y_data: np.ndarray,
                              series: SeriesMetadata, plot_kwargs: dict):
         """Render combined line + scatter plot."""
         # Draw line
-        self.ax.plot(
+        ax.plot(
             x_data, y_data,
             linestyle=series.line_style.value,
             linewidth=series.line_width,
@@ -245,7 +269,7 @@ class PlotView(QWidget):
             **plot_kwargs
         )
     
-    def _render_bar(self, x_data: np.ndarray, y_data: np.ndarray,
+    def _render_bar(self, ax, x_data: np.ndarray, y_data: np.ndarray,
                     series: SeriesMetadata, plot_kwargs: dict):
         """Render bar plot."""
         # Calculate bar width (80% of spacing)
@@ -254,7 +278,7 @@ class PlotView(QWidget):
         else:
             width = 0.8
         
-        self.ax.bar(
+        ax.bar(
             x_data, y_data,
             width=width,
             edgecolor=series.get_marker_edge_color(),
@@ -262,21 +286,21 @@ class PlotView(QWidget):
             **plot_kwargs
         )
     
-    def _render_step(self, x_data: np.ndarray, y_data: np.ndarray,
+    def _render_step(self, ax, x_data: np.ndarray, y_data: np.ndarray,
                      series: SeriesMetadata, plot_kwargs: dict):
         """Render step plot."""
-        self.ax.step(
+        ax.step(
             x_data, y_data,
             where='mid',
             linewidth=series.line_width,
             **plot_kwargs
         )
     
-    def _render_errorbar(self, x_data: np.ndarray, y_data: np.ndarray,
+    def _render_errorbar(self, ax, x_data: np.ndarray, y_data: np.ndarray,
                          x_error: Optional[np.ndarray], y_error: Optional[np.ndarray],
                          series: SeriesMetadata, plot_kwargs: dict):
         """Render errorbar plot."""
-        self.ax.errorbar(
+        ax.errorbar(
             x_data, y_data,
             xerr=x_error,
             yerr=y_error,
@@ -289,11 +313,11 @@ class PlotView(QWidget):
             **plot_kwargs
         )
     
-    def _add_error_bars(self, x_data: np.ndarray, y_data: np.ndarray,
+    def _add_error_bars(self, ax, x_data: np.ndarray, y_data: np.ndarray,
                         x_error: Optional[np.ndarray], y_error: Optional[np.ndarray],
                         series: SeriesMetadata):
         """Add error bars to existing plot."""
-        self.ax.errorbar(
+        ax.errorbar(
             x_data, y_data,
             xerr=x_error,
             yerr=y_error,
@@ -347,10 +371,16 @@ class PlotView(QWidget):
         
         # Legend
         if config.legend.show:
-            # Check if any series should be in legend
+            # Combine handles and labels from both axes if secondary exists
             handles, labels = self.ax.get_legend_handles_labels()
+            if self.ax2:
+                handles2, labels2 = self.ax2.get_legend_handles_labels()
+                handles.extend(handles2)
+                labels.extend(labels2)
+            
             if handles:
                 self.ax.legend(
+                    handles, labels,
                     loc=config.legend.location.value,
                     frameon=config.legend.frameon,
                     framealpha=config.legend.frame_alpha,
@@ -359,6 +389,40 @@ class PlotView(QWidget):
                     fontsize=config.legend.fontsize,
                     title=config.legend.title
                 )
+        
+        # Secondary Y-axis label (if exists)
+        if self.ax2:
+            # Use configured secondary y-axis label if available
+            y2_label = config.y2_axis.get_full_label()
+            if y2_label and y2_label != "Secondary Y-axis":
+                self.ax2.set_ylabel(y2_label, fontsize=12)
+            else:
+                # Auto-detect from series using secondary axis
+                if self._plot_model:
+                    secondary_series = [
+                        s for s in self._plot_model.get_all_series()
+                        if s.use_secondary_y_axis
+                    ]
+                    if secondary_series:
+                        # Use first secondary series for axis label
+                        first_secondary = secondary_series[0]
+                        model = self._plot_model._datatable.model() if self._plot_model._datatable else None
+                        if model:
+                            try:
+                                y_meta = model.get_column_metadata(first_secondary.y_column)
+                                label = first_secondary.y_column
+                                if y_meta.unit:
+                                    label += f" [{y_meta.unit}]"
+                                self.ax2.set_ylabel(label, fontsize=12)
+                            except Exception:
+                                self.ax2.set_ylabel("Secondary Y-axis", fontsize=12)
+            
+            # Apply secondary Y-axis configuration
+            self.ax2.set_yscale(config.y2_axis.scale.value)
+            if not config.y2_axis.auto_range:
+                self.ax2.set_ylim(config.y2_axis.min_value, config.y2_axis.max_value)
+            if config.y2_axis.invert:
+                self.ax2.invert_yaxis()
         
         # Background color
         self.figure.patch.set_facecolor(config.background_color)

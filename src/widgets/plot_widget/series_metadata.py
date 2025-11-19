@@ -77,6 +77,7 @@ class SeriesMetadata:
         # Display properties
         visible: Whether series is visible
         z_order: Drawing order (higher = drawn on top)
+        use_secondary_y_axis: Use secondary (right) y-axis for this series
     """
     
     # Core identification
@@ -110,6 +111,7 @@ class SeriesMetadata:
     # Display properties
     visible: bool = True
     z_order: int = 1
+    use_secondary_y_axis: bool = False  # Use right y-axis (twinx)
     
     def __post_init__(self):
         """Validate and normalize metadata after initialization."""

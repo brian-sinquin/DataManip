@@ -173,6 +173,19 @@ class AddSeriesDialog(QDialog):
         error_layout.addRow("Y Error Column:", self.y_error_combo)
         
         layout.addWidget(error_group)
+        
+        # Axis selection
+        axis_group = QGroupBox("Axis Selection")
+        axis_layout = QFormLayout(axis_group)
+        
+        self.use_secondary_y_checkbox = QCheckBox("Use secondary Y-axis (right side)")
+        self.use_secondary_y_checkbox.setToolTip(
+            "Plot this series on a secondary Y-axis (right side).\n"
+            "Useful for plotting data with different units."
+        )
+        axis_layout.addRow("", self.use_secondary_y_checkbox)
+        
+        layout.addWidget(axis_group)
         layout.addStretch()
         
         # Auto-suggest series name based on columns
@@ -390,7 +403,8 @@ class AddSeriesDialog(QDialog):
             show_in_legend=self.show_in_legend_checkbox.isChecked(),
             legend_label=self.legend_label_edit.text().strip() or None,
             visible=self.visible_checkbox.isChecked(),
-            z_order=self.z_order_spin.value()
+            z_order=self.z_order_spin.value(),
+            use_secondary_y_axis=self.use_secondary_y_checkbox.isChecked()
         )
     
     def _load_existing_values(self):
@@ -424,6 +438,9 @@ class AddSeriesDialog(QDialog):
                 self.y_error_combo.setCurrentIndex(y_err_idx)
         
         self.show_error_bars_checkbox.setChecked(s.show_error_bars)
+        
+        # Axis selection
+        self.use_secondary_y_checkbox.setChecked(s.use_secondary_y_axis)
         
         # Style tab
         style_idx = self.plot_style_combo.findData(s.plot_style)

@@ -183,6 +183,7 @@ class PlotConfig:
     # Axes
     x_axis: AxisConfig = field(default_factory=lambda: AxisConfig(label="X-axis"))
     y_axis: AxisConfig = field(default_factory=lambda: AxisConfig(label="Y-axis"))
+    y2_axis: AxisConfig = field(default_factory=lambda: AxisConfig(label="Secondary Y-axis"))
     
     # Grid
     grid_style: GridStyle = GridStyle.MAJOR
@@ -214,6 +215,7 @@ class PlotConfig:
             'title_fontsize': self.title_fontsize,
             'x_axis': self.x_axis.to_dict(),
             'y_axis': self.y_axis.to_dict(),
+            'y2_axis': self.y2_axis.to_dict(),
             'grid_style': self.grid_style.value,
             'grid_color': self.grid_color,
             'grid_line_width': self.grid_line_width,
@@ -242,6 +244,8 @@ class PlotConfig:
             data['x_axis'] = AxisConfig.from_dict(data['x_axis'])
         if 'y_axis' in data:
             data['y_axis'] = AxisConfig.from_dict(data['y_axis'])
+        if 'y2_axis' in data:
+            data['y2_axis'] = AxisConfig.from_dict(data['y2_axis'])
         if 'legend' in data:
             data['legend'] = LegendConfig.from_dict(data['legend'])
         if 'grid_style' in data and isinstance(data['grid_style'], str):

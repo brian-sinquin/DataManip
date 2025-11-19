@@ -113,7 +113,7 @@ class PlotModel(QObject):
             series: SeriesMetadata instance
             
         Raises:
-            ValueError: If series name already exists or columns are invalid
+            ValueError: If series name already exists, columns are invalid, or units incompatible
         """
         # Check for duplicate name
         if series.name in self._series:
@@ -122,6 +122,21 @@ class PlotModel(QObject):
         # Validate columns exist in datatable
         if not self._validate_series_columns(series):
             raise ValueError(f"Invalid columns for series '{series.name}'")
+        
+        # Validate unit compatibility
+        if not self._validate_unit_compatibility(series):
+            # Get detailed error message
+            model = self._datatable.model()
+            new_y_unit = model.get_column_metadata(series.y_column).unit or "dimensionless"
+            new_x_unit = model.get_column_metadata(series.x_column).unit or "dimensionless"
+            
+            axis_type = "secondary Y" if series.use_secondary_y_axis else "primary Y"
+            raise ValueError(
+                f"Cannot add series: incompatible units.\n"
+                f"Y-axis ({axis_type}): {new_y_unit}\n"
+                f"X-axis: {new_x_unit}\n"
+                f"\nTip: Use 'Secondary Y-axis' to plot different units."
+            )
         
         # Add series
         self._series[series.name] = series
@@ -162,7 +177,7 @@ class PlotModel(QObject):
             
         Raises:
             KeyError: If series doesn't exist
-            ValueError: If new name conflicts or columns invalid
+            ValueError: If new name conflicts, columns invalid, or units incompatible
         """
         if series_name not in self._series:
             raise KeyError(f"Series '{series_name}' not found")
@@ -175,21 +190,43 @@ class PlotModel(QObject):
         if not self._validate_series_columns(series):
             raise ValueError(f"Invalid columns for series '{series.name}'")
         
-        # Handle name change
-        if series.name != series_name:
-            # Update order list
-            idx = self._series_order.index(series_name)
-            self._series_order[idx] = series.name
-            
-            # Remove old, add new
-            del self._series[series_name]
-            self._series[series.name] = series
-        else:
-            # Just update metadata
-            self._series[series_name] = series
+        # Validate unit compatibility (temporarily remove current series from check)
+        old_series = self._series[series_name]
+        del self._series[series_name]
+        self._series_order.remove(series_name)
         
-        # Emit signal
-        self.seriesUpdated.emit(series.name)
+        try:
+            if not self._validate_unit_compatibility(series):
+                # Restore old series
+                self._series[series_name] = old_series
+                self._series_order.append(series_name)
+                
+                # Get detailed error message
+                model = self._datatable.model()
+                new_y_unit = model.get_column_metadata(series.y_column).unit or "dimensionless"
+                axis_type = "secondary Y" if series.use_secondary_y_axis else "primary Y"
+                raise ValueError(
+                    f"Cannot update series: incompatible units on {axis_type}-axis ({new_y_unit})"
+                )
+            
+            # Handle name change
+            if series.name != series_name:
+                # Add with new name
+                self._series[series.name] = series
+                self._series_order.append(series.name)
+            else:
+                # Just update metadata
+                self._series[series_name] = series
+                self._series_order.append(series_name)
+            
+            # Emit signal
+            self.seriesUpdated.emit(series.name)
+            
+        except ValueError:
+            # Restore old series and re-raise
+            self._series[series_name] = old_series
+            self._series_order.append(series_name)
+            raise
     
     def get_series(self, series_name: str) -> SeriesMetadata:
         """Get series metadata by name.
@@ -288,6 +325,57 @@ class PlotModel(QObject):
             return False
         
         return True
+    
+    def _validate_unit_compatibility(self, series: SeriesMetadata) -> bool:
+        """Validate that series units are compatible with existing series on same axis.
+        
+        Args:
+            series: SeriesMetadata to validate
+            
+        Returns:
+            True if compatible, False otherwise
+        """
+        if not self._datatable or not self._series_order:
+            return True  # First series or no datatable
+        
+        model = self._datatable.model()
+        
+        try:
+            # Get units for the new series
+            new_x_meta = model.get_column_metadata(series.x_column)
+            new_y_meta = model.get_column_metadata(series.y_column)
+            new_x_unit = new_x_meta.unit
+            new_y_unit = new_y_meta.unit
+            
+            # Check against existing series
+            for existing_name in self._series_order:
+                existing = self._series[existing_name]
+                
+                # Get units for existing series
+                existing_x_meta = model.get_column_metadata(existing.x_column)
+                existing_y_meta = model.get_column_metadata(existing.y_column)
+                existing_x_unit = existing_x_meta.unit
+                existing_y_unit = existing_y_meta.unit
+                
+                # Check X-axis unit compatibility (always shared)
+                if new_x_unit != existing_x_unit:
+                    # Allow dimensionless (None) to mix with any unit
+                    if new_x_unit is not None and existing_x_unit is not None:
+                        return False
+                
+                # Check Y-axis unit compatibility
+                # Series on different axes (primary vs secondary) can have different units
+                if series.use_secondary_y_axis == existing.use_secondary_y_axis:
+                    if new_y_unit != existing_y_unit:
+                        # Allow dimensionless (None) to mix with any unit
+                        if new_y_unit is not None and existing_y_unit is not None:
+                            return False
+            
+            return True
+            
+        except Exception:
+            # If we can't get metadata, allow the series (fail open)
+            return True
     
     def _validate_all_series(self):
         """Validate all series against current datatable state."""
@@ -450,6 +538,18 @@ class PlotModel(QObject):
         for key, value in kwargs.items():
             if hasattr(self._config.y_axis, key):
                 setattr(self._config.y_axis, key, value)
+        
+        self.configUpdated.emit()
+    
+    def update_y2_axis(self, **kwargs) -> None:
+        """Update secondary Y-axis configuration.
+        
+        Args:
+            **kwargs: AxisConfig attributes to update
+        """
+        for key, value in kwargs.items():
+            if hasattr(self._config.y2_axis, key):
+                setattr(self._config.y2_axis, key, value)
         
         self.configUpdated.emit()
     

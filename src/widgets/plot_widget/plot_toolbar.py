@@ -83,7 +83,8 @@ class PlotToolbar(QToolBar):
         
         axes_menu = QMenu(self)
         axes_menu.addAction("Configure X-Axis...", self._configure_x_axis)
-        axes_menu.addAction("Configure Y-Axis...", self._configure_y_axis)
+        axes_menu.addAction("Configure Y-Axis (Primary)...", self._configure_y_axis)
+        axes_menu.addAction("Configure Y-Axis (Secondary)...", self._configure_y2_axis)
         axes_menu.addSeparator()
         axes_menu.addAction("Auto-Configure from Data", self._auto_configure_axes)
         axes_button.setMenu(axes_menu)
@@ -357,11 +358,24 @@ class PlotToolbar(QToolBar):
             return
         
         config = self.plot_model.get_config()
-        dialog = AxisConfigDialog(config.y_axis, "Y-axis", self)
+        dialog = AxisConfigDialog(config.y_axis, "Y-axis (Primary)", self)
         
         if dialog.exec():
             new_axis_config = dialog.get_config()
             self.plot_model.update_y_axis(**new_axis_config.__dict__)
+    
+    @Slot()
+    def _configure_y2_axis(self):
+        """Configure secondary Y-axis."""
+        if not self.plot_model:
+            return
+        
+        config = self.plot_model.get_config()
+        dialog = AxisConfigDialog(config.y2_axis, "Y-axis (Secondary)", self)
+        
+        if dialog.exec():
+            new_axis_config = dialog.get_config()
+            self.plot_model.update_y2_axis(**new_axis_config.__dict__)
     
     @Slot()
     def _configure_plot(self):
