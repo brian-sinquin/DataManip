@@ -54,10 +54,21 @@ jobs:
     - name: Install dependencies
       run: uv sync --frozen
     
+    - name: Run code coverage (Linux)
+      if: runner.os == 'Linux' && matrix.python-version == '3.12'
+      run: |
+        xvfb-run -a uv run pytest tests/unit/ --cov --cov-branch --cov-report=xml -v --tb=short -x
+
+    - name: Upload coverage reports to Codecov
+      if: runner.os == 'Linux' && matrix.python-version == '3.12'
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+
     - name: Run tests (Linux with Xvfb)
       if: runner.os == 'Linux'
       run: xvfb-run -a uv run pytest tests/unit/ -v --tb=short -x
-    
+
     - name: Run tests (Windows/macOS)
       if: runner.os != 'Linux'
       run: uv run pytest tests/unit/ -v --tb=short -x

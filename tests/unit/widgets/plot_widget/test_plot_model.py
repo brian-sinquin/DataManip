@@ -197,13 +197,10 @@ class TestSeriesManagement:
     def test_get_all_series(self, plot_model):
         """Test getting all series."""
         series1 = SeriesMetadata(name="Series1", x_column="time", y_column="position")
-        series2 = SeriesMetadata(name="Series2", x_column="time", y_column="velocity")
-        
+        series2 = SeriesMetadata(name="Series2", x_column="time", y_column="velocity", use_secondary_y_axis=True)
         plot_model.add_series(series1)
         plot_model.add_series(series2)
-        
         all_series = plot_model.get_all_series()
-        
         assert len(all_series) == 2
         assert all_series[0].name == "Series1"
         assert all_series[1].name == "Series2"
@@ -211,15 +208,11 @@ class TestSeriesManagement:
     def test_clear_all_series(self, plot_model):
         """Test clearing all series."""
         series1 = SeriesMetadata(name="Series1", x_column="time", y_column="position")
-        series2 = SeriesMetadata(name="Series2", x_column="time", y_column="velocity")
-        
+        series2 = SeriesMetadata(name="Series2", x_column="time", y_column="velocity", use_secondary_y_axis=True)
         plot_model.add_series(series1)
         plot_model.add_series(series2)
-        
         assert plot_model.series_count() == 2
-        
         plot_model.clear_all_series()
-        
         assert plot_model.series_count() == 0
 
 
@@ -262,18 +255,15 @@ class TestDataExtraction:
     def test_get_all_series_data(self, plot_model):
         """Test extracting data for all series."""
         series1 = SeriesMetadata(name="Series1", x_column="time", y_column="position")
-        series2 = SeriesMetadata(name="Series2", x_column="time", y_column="velocity")
-        
+        series2 = SeriesMetadata(name="Series2", x_column="time", y_column="velocity", use_secondary_y_axis=True)
         plot_model.add_series(series1)
         plot_model.add_series(series2)
-        
         all_data = plot_model.get_all_series_data()
-        
         assert len(all_data) == 2
         assert all_data[0][0] == "Series1"  # series name
         assert len(all_data[0][1]) == 5  # x_data
         assert len(all_data[0][2]) == 5  # y_data
-    
+
     def test_get_all_series_data_respects_visibility(self, plot_model):
         """Test that invisible series are excluded."""
         series1 = SeriesMetadata(name="Visible", x_column="time", y_column="position")
@@ -281,14 +271,12 @@ class TestDataExtraction:
             name="Hidden",
             x_column="time",
             y_column="velocity",
-            visible=False
+            visible=False,
+            use_secondary_y_axis=True
         )
-        
         plot_model.add_series(series1)
         plot_model.add_series(series2)
-        
         all_data = plot_model.get_all_series_data()
-        
         assert len(all_data) == 1
         assert all_data[0][0] == "Visible"
 
