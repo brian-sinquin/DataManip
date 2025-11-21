@@ -26,6 +26,10 @@
 - [x] **Dialog AttributeError** - Fixed signal connection timing in derivative/interpolation dialogs
 - [x] **Import Errors** - Fixed all snake_case import paths
 
+- [ ] Variables are not recognized when propagating uncertainty (unify formula calculation)
+- [ ] The creation / edition of uncertainty columns is not clear.
+- [ ] Recalculation is not fully automatic
+
 ### DataTable Implementation
 - [x] **Complete Feature Parity** - All features from AdvancedDataTableWidget migrated
 - [x] **6 Column Types** - DATA, CALCULATED, DERIVATIVE, RANGE, INTERPOLATION, UNCERTAINTY
