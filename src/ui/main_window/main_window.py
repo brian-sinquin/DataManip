@@ -70,27 +70,48 @@ class MainWindow(QMainWindow):
         """Save the file with a new name."""
         self.statusBar().showMessage(tr("status.save_as"))
 
+    def _delegate_to_table(self, method_name: str, status_message: str):
+        """Delegate an action to the data table.
+        
+        Args:
+            method_name: Name of the method to call on the table (e.g., '_on_paste')
+            status_message: Status message key to show
+        """
+        try:
+            table = getattr(self.workspace, 'table', None)
+            if table and hasattr(table, method_name):
+                method = getattr(table, method_name)
+                method()
+            self.statusBar().showMessage(status_message)
+        except Exception as e:
+            error_type = method_name.replace('_on_', '').title()
+            mb.show_error(
+                self,
+                f"{error_type} Error",
+                f"Error performing {method_name}: {str(e)}"
+            )
+    
     # Edit Menu Actions
     def undo(self):
         """Undo the last action."""
-        self.statusBar().showMessage(tr("status.undo"))
-
+        self._delegate_to_table('_on_undo', tr("status.undo"))
+    
     def redo(self):
         """Redo the last undone action."""
-        self.statusBar().showMessage(tr("status.redo"))
-
+        self._delegate_to_table('_on_redo', tr("status.redo"))
+    
     def cut(self):
         """Cut the selection."""
-        self.statusBar().showMessage(tr("status.cut"))
-
+        self._delegate_to_table('_on_cut', tr("status.cut"))
+    
     def copy(self):
         """Copy the selection."""
-        self.statusBar().showMessage(tr("status.copy"))
-
+        self._delegate_to_table('_on_copy', tr("status.copy"))
+    
     def paste(self):
         """Paste from clipboard."""
-        self.statusBar().showMessage(tr("status.paste"))
-
+        self._delegate_to_table('_on_paste', tr("status.paste"))
+    
     def show_preferences(self):
         """Open preferences window."""
         try:

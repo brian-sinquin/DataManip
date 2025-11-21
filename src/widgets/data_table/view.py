@@ -88,29 +88,12 @@ class DataTableView(QTableView):
     
     def _setup_shortcuts(self):
         """Set up keyboard shortcuts for clipboard and undo/redo operations."""
-        # Copy: Ctrl+C
-        copy_shortcut = QShortcut(QKeySequence.StandardKey.Copy, self)
-        copy_shortcut.activated.connect(self._on_copy)
-        
-        # Paste: Ctrl+V
-        paste_shortcut = QShortcut(QKeySequence.StandardKey.Paste, self)
-        paste_shortcut.activated.connect(self._on_paste)
-        
-        # Cut: Ctrl+X
-        cut_shortcut = QShortcut(QKeySequence.StandardKey.Cut, self)
-        cut_shortcut.activated.connect(self._on_cut)
+        # Note: All standard shortcuts (Copy, Paste, Cut, Undo, Redo) are handled by menu bar actions
+        # to avoid ambiguous shortcut conflicts. Only table-specific shortcuts here.
         
         # Delete: Del
         delete_shortcut = QShortcut(QKeySequence.StandardKey.Delete, self)
         delete_shortcut.activated.connect(self._on_delete)
-        
-        # Undo: Ctrl+Z
-        undo_shortcut = QShortcut(QKeySequence.StandardKey.Undo, self)
-        undo_shortcut.activated.connect(self._on_undo)
-        
-        # Redo: Ctrl+Y (Windows) or Ctrl+Shift+Z (Mac/Linux)
-        redo_shortcut = QShortcut(QKeySequence.StandardKey.Redo, self)
-        redo_shortcut.activated.connect(self._on_redo)
     
     def _on_copy(self):
         """Handle copy operation (Ctrl+C)."""
