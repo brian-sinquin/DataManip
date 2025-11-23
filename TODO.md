@@ -102,9 +102,9 @@ src/ui/widgets/
 ## Known Issues 🐛
 
 ### Testing Status ✅
-- ✅ 135/135 tests passing (100%) 
+- ✅ 140/140 tests passing (100%) 
 - ✅ Core layer fully tested (53/53)
-- ✅ Studies layer fully tested (71/71) - includes 25 StatisticsStudy tests
+- ✅ Studies layer fully tested (76/76) - includes 25 StatisticsStudy + 5 custom functions tests
 - ✅ UI layer tested (2/2)
 
 ### Code Quality Issues 🟡
