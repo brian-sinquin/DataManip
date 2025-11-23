@@ -930,24 +930,44 @@ class MainWindow(QMainWindow):
     def _show_shortcuts(self):
         """Show keyboard shortcuts help."""
         shortcuts_text = """
-        <h3>Keyboard Shortcuts</h3>
+        <h2>Keyboard Shortcuts</h2>
+        <h3>File Menu</h3>
         <table>
         <tr><td><b>Ctrl+T</b></td><td>New Data Table</td></tr>
         <tr><td><b>Ctrl+P</b></td><td>New Plot</td></tr>
         <tr><td><b>Ctrl+S (Stats menu)</b></td><td>New Statistics</td></tr>
+        <tr><td><b>Ctrl+I</b></td><td>Import from CSV</td></tr>
+        <tr><td><b>Ctrl+E</b></td><td>Export to CSV</td></tr>
         <tr><td><b>Ctrl+S (File menu)</b></td><td>Save Workspace</td></tr>
         <tr><td><b>Ctrl+O</b></td><td>Open Workspace</td></tr>
-        <tr><td><b>Ctrl+E</b></td><td>Export to CSV</td></tr>
-        <tr><td><b>Ctrl+I</b></td><td>Import from CSV</td></tr>
-        <tr><td><b>Ctrl+W</b></td><td>Close Study</td></tr>
         <tr><td><b>Ctrl+Q</b></td><td>Exit Application</td></tr>
+        </table>
+        
+        <h3>Edit Menu</h3>
+        <table>
+        <tr><td><b>Ctrl+Z</b></td><td>Undo</td></tr>
+        <tr><td><b>Ctrl+Y</b></td><td>Redo</td></tr>
         <tr><td><b>F2</b></td><td>Rename Study</td></tr>
+        <tr><td><b>Ctrl+W</b></td><td>Close Study</td></tr>
+        </table>
+        
+        <h3>View Menu</h3>
+        <table>
         <tr><td><b>Ctrl+Tab</b></td><td>Next Tab</td></tr>
         <tr><td><b>Ctrl+Shift+Tab</b></td><td>Previous Tab</td></tr>
+        </table>
+        
+        <h3>Tools Menu</h3>
+        <table>
         <tr><td><b>Ctrl+,</b></td><td>Preferences</td></tr>
+        </table>
+        
+        <h3>Help Menu</h3>
+        <table>
         <tr><td><b>F1</b></td><td>Show This Help</td></tr>
         </table>
-        <h4>DataTable View</h4>
+        
+        <h3>DataTable View</h3>
         <table>
         <tr><td><b>Ctrl+R</b></td><td>Add Row</td></tr>
         <tr><td><b>Ctrl+D</b></td><td>Delete Row(s)</td></tr>
@@ -956,13 +976,15 @@ class MainWindow(QMainWindow):
         <tr><td><b>Ctrl+F</b></td><td>Search/Filter</td></tr>
         <tr><td><b>Double-click header</b></td><td>Rename Column</td></tr>
         </table>
-        <h4>Plot View</h4>
+        
+        <h3>Plot View</h3>
         <table>
         <tr><td><b>Ctrl+A</b></td><td>Add Series</td></tr>
         <tr><td><b>Ctrl+R</b></td><td>Remove Series</td></tr>
         <tr><td><b>F5</b></td><td>Refresh Plot</td></tr>
         </table>
-        <h4>Constants & Functions View</h4>
+        
+        <h3>Constants & Functions View</h3>
         <table>
         <tr><td><b>Ctrl+N</b></td><td>Add New</td></tr>
         <tr><td><b>Ctrl+E</b></td><td>Edit Selected</td></tr>
