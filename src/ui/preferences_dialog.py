@@ -397,11 +397,13 @@ class PreferencesDialog(QDialog):
         self._save_settings()
         self.settings_changed.emit(self.settings)
         
-        QMessageBox.information(
-            self,
-            "Settings Applied",
-            "Preferences have been applied.\nSome changes may require restart."
-        )
+        # Only show message box if we have a parent (not during tests)
+        if self.parent() is not None:
+            QMessageBox.information(
+                self,
+                "Settings Applied",
+                "Preferences have been applied.\nSome changes may require restart."
+            )
     
     def _accept_settings(self):
         """Apply settings and close dialog."""
