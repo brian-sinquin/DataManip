@@ -11,6 +11,13 @@
 
 ## Recent Achievements (November 23, 2025) ✅
 
+### Phase 2B: Statistics Widget ✅ COMPLETE
+- **StatisticsStudy Class** - Full statistical analysis backend
+- **StatisticsWidget UI** - Histogram + box plot visualizations
+- **25 Unit Tests** - Comprehensive test coverage for statistics calculations
+- **Menu Integration** - File > New > Statistics (Ctrl+S)
+- **135/135 Tests Passing** - No regressions
+
 ### Documentation Unification ✅
 - **PROJECT.md** - Now includes rebase comparison, legacy analysis, architecture, features, testing, roadmap
 - **Consolidated** - Merged REVIEW_SUMMARY.md and MISSING_FEATURES.md content
@@ -71,35 +78,37 @@ src/ui/widgets/
 ### Phase 2A: Code Quality ✅ COMPLETE (Nov 23)
 - [x] **Widget Reorganization** (~4 hours) - Split data_table into 8 files ✅
 - [x] Update imports in main_window.py and widgets/__init__.py ✅
-- [x] Verify 108/110 tests still pass ✅
+- [x] Verify 110/110 tests still pass ✅
 - [x] Clean modular structure achieved ✅
 
-### Phase 2B: Statistics Widget (NEXT - THIS WEEK)  
-- [ ] Create StatisticsStudy class (~4 hours)
-- [ ] Create StatisticsWidget UI (~6 hours)
-- [ ] Integration with DataTableStudy
-- [ ] Add to "New Study" menu
-- [ ] Unit tests for statistics calculations
+### Phase 2B: Statistics Widget ✅ COMPLETE (Nov 23)  
+- [x] Create StatisticsStudy class (~4 hours) ✅
+- [x] Create StatisticsWidget UI (~6 hours) ✅
+- [x] Integration with DataTableStudy ✅
+- [x] Add to "New Study" menu ✅
+- [x] Unit tests for statistics calculations (25 tests) ✅
 
-### Phase 2C: Polish (FOLLOWING WEEK)
+### Phase 2C: Polish (NEXT - THIS WEEK)
 - [ ] **Preferences Window** (~6 hours)
 - [ ] **Enhanced Notifications** (~2 hours)
 - [ ] User documentation (getting started guide)
 
 **Total Phase 2A**: ✅ Complete (4 hours)  
-**Total Phase 2B-C**: ~18 hours remaining
+**Total Phase 2B**: ✅ Complete (10 hours)  
+**Total Phase 2C**: ~8 hours remaining
 
 ---
 
 ## Known Issues 🐛
 
 ### Testing Status ✅
-- ✅ 97/97 tests passing (100%) 
+- ✅ 135/135 tests passing (100%) 
 - ✅ Core layer fully tested (53/53)
-- ✅ Studies layer fully tested (46/46)
+- ✅ Studies layer fully tested (71/71) - includes 25 StatisticsStudy tests
+- ✅ UI layer tested (2/2)
 
 ### Code Quality Issues 🟡
-- [ ] data_table_widget.py too large (1,211 lines) → needs split
+- [x] data_table_widget.py too large (1,211 lines) → ✅ SPLIT into 8 files
 - [ ] constants_widget.py moderately large (630 lines) → split optional
 - [ ] plot_widget.py acceptable (400 lines)
 - [ ] 407 legacy tests archived (review/migrate later)
