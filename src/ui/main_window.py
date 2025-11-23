@@ -856,7 +856,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Loaded: Derivatives Demo example")
     
     def _save_workspace(self):
-        """Save workspace to JSON file."""
+        """Save workspace to JSON file with atomic write."""
         filename, _ = QFileDialog.getSaveFileName(
             self,
             "Save Workspace",
@@ -870,11 +870,40 @@ class MainWindow(QMainWindow):
         try:
             workspace_data = self.workspace.to_dict()
             
-            with open(filename, 'w', encoding='utf-8') as f:
-                json.dump(workspace_data, f, indent=2)
+            # Atomic write: write to temp file, then rename
+            filepath = Path(filename)
+            temp_path = filepath.with_suffix(filepath.suffix + '.tmp')
             
-            self.statusBar().showMessage(f"Workspace saved to {Path(filename).name}", 3000)
-            self.notifications.show_success(f"Workspace saved to {Path(filename).name}")
+            # Create backup if file exists
+            if filepath.exists():
+                backup_path = filepath.with_suffix(filepath.suffix + '.bak')
+                if backup_path.exists():
+                    backup_path.unlink()
+                filepath.rename(backup_path)
+            
+            try:
+                # Write to temp file
+                with open(temp_path, 'w', encoding='utf-8') as f:
+                    json.dump(workspace_data, f, indent=2)
+                
+                # Atomic rename
+                temp_path.rename(filepath)
+                
+                # Remove backup on success
+                backup_path = filepath.with_suffix(filepath.suffix + '.bak')
+                if backup_path.exists():
+                    backup_path.unlink()
+                
+                self.statusBar().showMessage(f"Workspace saved to {filepath.name}", 3000)
+                self.notifications.show_success(f"Workspace saved to {filepath.name}")
+            except Exception as e:
+                # Restore from backup on failure
+                if temp_path.exists():
+                    temp_path.unlink()
+                backup_path = filepath.with_suffix(filepath.suffix + '.bak')
+                if backup_path.exists():
+                    backup_path.rename(filepath)
+                raise
         except Exception as e:
             QMessageBox.critical(
                 self,
