@@ -1,5 +1,39 @@
 # Release Note v0.2.0
 
+## Recent Updates (November 23, 2025)
+
+### UI Polish & Code Quality
+- **Display Precision**: Added DISPLAY_PRECISION constant (33 significant digits) for cell display formatting
+- **Precision Preservation**: Separated DisplayRole (formatted) and EditRole (full precision) to prevent data loss during editing
+- **Non-Closable Constants Tab**: Constants & Functions tab now has no close button and is protected from closure
+- **Styling Simplification**: Removed custom column colors, adopted theme-aware defaults for better light/dark mode support
+- **Column Symbols**: Unicode symbols (✎, ƒ, d/dx, ⋯, δ) now displayed consistently in tooltips, context menus, and dialogs
+- **Import Fixes**: Cleaned up COLUMN_TEXT_COLORS/COLUMN_BG_COLORS references from module exports
+- **Documentation**: Enhanced module docstrings and function documentation for better code clarity
+
+### Formula Engine Optimization
+- **Performance**: 3x speedup (9.5M → 28.7M calculations/sec) with lazy evaluation
+- **Workspace Constants Caching**: Version tracking with automatic invalidation on constant changes
+- **Formula Compilation Caching**: Compile formulas once and reuse compiled versions
+- **Dirty Flag Tracking**: Smart recalculation - only update changed columns
+- **Batch Operations**: `add_columns_batch()` method for 8x faster multi-column additions
+- **Parallel Execution**: ThreadPoolExecutor for independent column calculations
+- **Dependency Levels**: Topological sort enables safe parallelization
+
+### Statistics Widget
+- **StatisticsStudy Class**: Full statistical analysis backend with descriptive statistics
+- **StatisticsWidget UI**: Histogram and box plot visualizations
+- **25 Unit Tests**: Comprehensive test coverage for statistics calculations
+- **Menu Integration**: File > New > Statistics (Ctrl+S)
+- **Custom Functions**: Fixed bug allowing functions in calculated columns
+- **Calculated Constants**: Formula-based constants with dependency resolution
+- **Column Rename**: Added FormulaEngine.rename_variable method for proper formula updates
+
+### Testing Status
+- **160/160 Tests Passing** (100% pass rate)
+- All core, studies, and UI tests green
+- No regressions from optimizations or UI changes
+
 ## Features
 
 ### Enhanced Plot Widget Architecture

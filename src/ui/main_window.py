@@ -5,7 +5,7 @@ Single workspace containing multiple study tabs.
 """
 
 from PySide6.QtWidgets import (
-    QMainWindow, QTabWidget, QMessageBox, QInputDialog, QFileDialog
+    QMainWindow, QTabWidget, QMessageBox, QInputDialog, QFileDialog, QTabBar
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
@@ -85,13 +85,6 @@ class MainWindow(QMainWindow):
         new_statistics_action.setShortcut("Ctrl+S")
         new_statistics_action.triggered.connect(self._new_statistics)
         new_menu.addAction(new_statistics_action)
-        
-        new_menu.addSeparator()
-        
-        new_vars_action = QAction("&Constants Tab", self)
-        new_vars_action.setShortcut("Ctrl+K")
-        new_vars_action.triggered.connect(self._new_variables_tab)
-        new_menu.addAction(new_vars_action)
         
         file_menu.addSeparator()
         
@@ -400,10 +393,10 @@ class MainWindow(QMainWindow):
         # Connect signal to update all studies
         vars_widget.constants_changed.connect(self._on_variables_changed)
         
-        self.study_tabs.addTab(vars_widget, "Constants & Functions")
-        
-        # Make Variables tab non-closable by moving close button
-        # (We'll handle this by checking tab name in close handler)
+        # Add tab and make it non-closable
+        tab_index = self.study_tabs.addTab(vars_widget, "Constants & Functions")
+        self.study_tabs.tabBar().setTabButton(tab_index, QTabBar.ButtonPosition.RightSide, None)
+        self.study_tabs.tabBar().setTabButton(tab_index, QTabBar.ButtonPosition.LeftSide, None)
     
     def _on_variables_changed(self):
         """Handle variables changed signal."""
@@ -423,8 +416,8 @@ class MainWindow(QMainWindow):
         # Get study name from tab
         study_name = self.study_tabs.tabText(index)
         
-        # Don't allow closing Constants tab
-        if study_name == "Constants & Functions":
+        # Prevent closing Constants & Functions tab
+        if "Constants" in study_name and "Functions" in study_name:
             return
         
         # Confirm close
@@ -897,9 +890,11 @@ class MainWindow(QMainWindow):
         <table>
         <tr><td><b>Ctrl+T</b></td><td>New Data Table</td></tr>
         <tr><td><b>Ctrl+P</b></td><td>New Plot</td></tr>
-        <tr><td><b>Ctrl+K</b></td><td>New Constants Tab</td></tr>
-        <tr><td><b>Ctrl+S</b></td><td>Save Workspace</td></tr>
+        <tr><td><b>Ctrl+S (Stats menu)</b></td><td>New Statistics</td></tr>
+        <tr><td><b>Ctrl+S (File menu)</b></td><td>Save Workspace</td></tr>
         <tr><td><b>Ctrl+O</b></td><td>Open Workspace</td></tr>
+        <tr><td><b>Ctrl+E</b></td><td>Export to CSV</td></tr>
+        <tr><td><b>Ctrl+I</b></td><td>Import from CSV</td></tr>
         <tr><td><b>Ctrl+W</b></td><td>Close Study</td></tr>
         <tr><td><b>Ctrl+Q</b></td><td>Exit Application</td></tr>
         <tr><td><b>F2</b></td><td>Rename Study</td></tr>
@@ -948,5 +943,5 @@ class MainWindow(QMainWindow):
             "<li>Unit tracking and visualization</li>"
             "</ul>"
             "<p>Built with PySide6, pandas, and NumPy.</p>"
-            "<p><i>88/88 unit tests passing!</i></p>"
+            "<p><i>160/160 unit tests passing!</i></p>"
         )

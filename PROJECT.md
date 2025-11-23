@@ -357,6 +357,8 @@ study.add_variable("g", 9.81, "m/s^2")
 
 **DataTable Widget**:
 - ✅ Inline cell editing (DATA columns)
+- ✅ Display precision: 33 significant digits (configurable via DISPLAY_PRECISION constant)
+- ✅ Precision preservation: EditRole returns full precision to prevent data loss during editing
 - ✅ Enhanced toolbar with all column types
 - ✅ Context menu (right-click operations)
 - ✅ Visual column differentiation (header symbols):
@@ -364,6 +366,9 @@ study.add_variable("g", 9.81, "m/s^2")
   - ƒ CALCULATED columns
   - d/dx DERIVATIVE columns
   - ⋯ RANGE columns
+  - δ UNCERTAINTY columns
+- ✅ Theme-aware styling (adapts to light/dark mode)
+- ✅ Non-closable Constants & Functions tab
 
 **Dialogs**:
 - ✅ AddDataColumnDialog

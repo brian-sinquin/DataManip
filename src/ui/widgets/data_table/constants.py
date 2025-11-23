@@ -1,6 +1,19 @@
-"""Constants for DataTable widget styling and symbols."""
+"""Constants for DataTable widget styling and symbols.
 
-from PySide6.QtGui import QColor
+This module defines visual and display constants for the DataTable widget:
+- DISPLAY_PRECISION: Number of significant digits for cell display (EditRole preserves full precision)
+- COLUMN_SYMBOLS: Unicode symbols for visual column type identification in headers, tooltips, and dialogs
+
+The column symbols provide quick visual feedback about column types:
+- ✎ (pencil): DATA columns - user-editable
+- ƒ (function): CALCULATED columns - formula-based
+- d/dx: DERIVATIVE columns - numerical differentiation
+- ⋯ (ellipsis): RANGE columns - generated sequences
+- δ (delta): UNCERTAINTY columns - error propagation
+"""
+
+# Display settings
+DISPLAY_PRECISION = 33  # Number of significant digits to display in cells
 
 # Column type symbols for headers
 COLUMN_SYMBOLS = {
@@ -9,31 +22,4 @@ COLUMN_SYMBOLS = {
     "derivative": "d/dx", # Derivative notation
     "range": "⋯",        # Range dots
     "uncertainty": "δ",  # Delta - uncertainty
-}
-
-# Column type text colors (for headers)
-COLUMN_TEXT_COLORS = {
-    "data": QColor(0, 0, 0),           # Black
-    "calculated": QColor(180, 120, 0), # Dark yellow/orange
-    "derivative": QColor(0, 80, 180),  # Dark blue
-    "range": QColor(0, 120, 60),       # Dark green
-    "uncertainty": QColor(140, 0, 140), # Purple
-}
-
-# Column type background colors (for cells)
-COLUMN_BG_COLORS = {
-    "data": QColor(255, 255, 255),      # White - editable
-    "calculated": QColor(255, 250, 240), # Light cream
-    "derivative": QColor(240, 245, 255), # Light blue
-    "range": QColor(240, 255, 245),      # Light green
-    "uncertainty": QColor(250, 240, 250), # Light purple
-}
-
-# Alternate row colors
-COLUMN_BG_COLORS_ALT = {
-    "data": QColor(248, 248, 248),      # Light gray
-    "calculated": QColor(252, 248, 235), # Darker cream
-    "derivative": QColor(235, 242, 252), # Darker blue
-    "range": QColor(235, 252, 242),      # Darker green
-    "uncertainty": QColor(248, 235, 248), # Darker purple
 }

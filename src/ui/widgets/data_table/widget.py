@@ -20,6 +20,7 @@ from ..column_dialogs_extended import AddDerivativeColumnDialog, AddRangeColumnD
 
 from .model import DataTableModel
 from .header import EditableHeaderView
+from .constants import COLUMN_SYMBOLS
 
 
 class DataTableWidget(QWidget):
@@ -505,11 +506,14 @@ class DataTableWidget(QWidget):
             show_warning(self, "Already Data", f"Column '{col_name}' is already a DATA column.")
             return
         
+        symbol = COLUMN_SYMBOLS.get(col_type, "")
+        type_display = f"{symbol} {col_type.upper()}" if symbol else col_type.upper()
+        
         # Confirm conversion
         if not confirm_action(
             self,
             "Convert Column",
-            f"Convert '{col_name}' from {col_type.upper()} to DATA column?\n\n"
+            f"Convert '{col_name}' from {type_display} to DATA column?\n\n"
             "Current values will be preserved but the column will become editable."
         ):
             return

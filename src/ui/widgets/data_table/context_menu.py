@@ -2,6 +2,7 @@
 
 from PySide6.QtWidgets import QMenu
 from studies.data_table_study import ColumnType
+from .constants import COLUMN_SYMBOLS
 
 
 def show_data_table_context_menu(widget, position):
@@ -21,8 +22,11 @@ def show_data_table_context_menu(widget, position):
         col_name = widget.study.table.columns[index.column()]
         col_type = widget.study.get_column_type(col_name)
         
+        symbol = COLUMN_SYMBOLS.get(col_type, "")
+        type_display = f"{symbol} {col_type.upper()}" if symbol else col_type.upper()
+        
         menu.addAction(f"Column: {col_name}").setEnabled(False)
-        menu.addAction(f"Type: {col_type.upper()}").setEnabled(False)
+        menu.addAction(f"Type: {type_display}").setEnabled(False)
         menu.addSeparator()
         
         # Column actions

@@ -1,12 +1,12 @@
 """Qt model for DataTableStudy."""
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
-from PySide6.QtGui import QBrush, QColor, QFont
+from PySide6.QtGui import QFont
 from typing import Any
 
 from studies.data_table_study import DataTableStudy, ColumnType
 from ..shared import format_cell_value, emit_full_model_update
-from .constants import COLUMN_SYMBOLS, COLUMN_TEXT_COLORS
+from .constants import COLUMN_SYMBOLS
 
 
 class DataTableModel(QAbstractTableModel):
@@ -46,17 +46,17 @@ class DataTableModel(QAbstractTableModel):
         if not index.isValid():
             return None
         
-        if role == Qt.DisplayRole or role == Qt.EditRole:  # type: ignore
-            value = self.study.table.data.iloc[index.row(), index.column()]
+        value = self.study.table.data.iloc[index.row(), index.column()]
+        
+        if role == Qt.DisplayRole:  # type: ignore
+            # Format for display with limited precision
             return format_cell_value(value)
         
-        # Foreground color for non-editable columns
-        if role == Qt.ForegroundRole:  # type: ignore
-            col_name = self.study.table.columns[index.column()]
-            col_type = self.study.get_column_type(col_name)
-            if col_type != ColumnType.DATA:
-                # Slightly dimmed for calculated columns
-                return QBrush(QColor(80, 80, 80))
+        if role == Qt.EditRole:  # type: ignore
+            # Return full precision value for editing
+            if value is None or (isinstance(value, float) and value != value):  # NaN
+                return ""
+            return str(value)
         
         return None
     
@@ -130,14 +130,6 @@ class DataTableModel(QAbstractTableModel):
             else:
                 return str(section + 1)
         
-        # Header text color based on column type
-        if role == Qt.ForegroundRole and orientation == Qt.Horizontal:  # type: ignore
-            if section < len(self.study.table.columns):
-                col_name = self.study.table.columns[section]
-                col_type = self.study.get_column_type(col_name)
-                color = COLUMN_TEXT_COLORS.get(col_type, QColor(0, 0, 0))
-                return QBrush(color)
-        
         # Bold font for headers
         if role == Qt.FontRole and orientation == Qt.Horizontal:  # type: ignore
             font = QFont()
@@ -150,7 +142,9 @@ class DataTableModel(QAbstractTableModel):
                 col_name = self.study.table.columns[section]
                 col_type = self.study.get_column_type(col_name)
                 
-                tooltip = f"Column: {col_name}\nType: {col_type.upper()}"
+                symbol = COLUMN_SYMBOLS.get(col_type, "")
+                type_display = f"{symbol} {col_type.upper()}" if symbol else col_type.upper()
+                tooltip = f"Column: {col_name}\nType: {type_display}"
                 
                 # Add type-specific info
                 col_meta = self.study.column_metadata.get(col_name, {})
