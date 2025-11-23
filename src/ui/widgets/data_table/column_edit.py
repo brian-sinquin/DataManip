@@ -2,10 +2,12 @@
 
 from studies.data_table_study import ColumnType
 from ..shared import show_warning
-from ..column_dialogs import AddCalculatedColumnDialog
-from ..column_dialogs_extended import (
-    AddDerivativeColumnDialog, AddRangeColumnDialog,
-    EditDataColumnDialog, EditUncertaintyColumnDialog
+from ..column_dialogs import (
+    AddCalculatedColumnDialog,
+    AddDerivativeColumnDialog,
+    AddRangeColumnDialog,
+    EditDataColumnDialog,
+    EditUncertaintyColumnDialog
 )
 
 
@@ -166,7 +168,7 @@ def _edit_uncertainty_column(widget, col_name: str):
         if widget.study.get_column_type(c) in [ColumnType.DATA, ColumnType.CALCULATED]
     ]
     
-    from ..column_dialogs_extended import EditUncertaintyColumnDialog
+    from ..column_dialogs_consolidated import EditUncertaintyColumnDialog
     dialog = EditUncertaintyColumnDialog(col_name, current_unit, ref_col, available_cols, widget)
     
     if dialog.exec():

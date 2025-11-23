@@ -7,10 +7,11 @@ and ensure consistent user experience across all dialogs.
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
-    QPushButton, QLabel
+    QPushButton, QLabel, QLineEdit
 )
 from PySide6.QtCore import Qt
 from typing import Optional
+from .validators import validate_column_name as validate_col_name
 
 
 class BaseDialog(QDialog):
@@ -170,9 +171,18 @@ class BaseColumnDialog(BaseDialog):
         super().__init__(title, description, parent, width, height)
         
         self.existing_columns = existing_columns or []
+        
+        # Common input fields
+        self.name_edit = QLineEdit()
+        self.name_edit.setPlaceholderText("e.g., time, position, velocity")
+        self.add_form_row("Column Name:", self.name_edit)
+        
+        self.unit_edit = QLineEdit()
+        self.unit_edit.setPlaceholderText("e.g., m, s, kg")
+        self.add_form_row("Unit (optional):", self.unit_edit)
     
     def validate_column_name(self, name: str, allow_existing: bool = False) -> tuple[bool, str]:
-        """Validate column name.
+        """Validate column name using centralized validator.
         
         Args:
             name: Column name to validate
@@ -181,16 +191,4 @@ class BaseColumnDialog(BaseDialog):
         Returns:
             Tuple of (is_valid, error_message)
         """
-        if not name:
-            return False, "Column name cannot be empty"
-        
-        if not name.replace('_', '').replace('-', '').isalnum():
-            return False, "Column name must be alphanumeric (underscores and hyphens allowed)"
-        
-        if name[0].isdigit():
-            return False, "Column name cannot start with a digit"
-        
-        if not allow_existing and name in self.existing_columns:
-            return False, f"Column '{name}' already exists"
-        
-        return True, ""
+        return validate_col_name(name, self.existing_columns, allow_existing)

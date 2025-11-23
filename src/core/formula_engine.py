@@ -35,11 +35,22 @@ class FormulaEngine:
     
     Evaluates formulas with:
     - Scalar values (constants, variables)
-    - Array operations (element-wise)
+    - Array operations (element-wise, automatic broadcasting)
     - Table operations (DataFrame operations)
     - Unit tracking and conversion
     - Uncertainty propagation (future)
     - Workspace constants (numeric, calculated, functions)
+    
+    Array Operations:
+    - Standard operators (+, -, *, /, **, etc.) work element-wise automatically
+    - No special syntax needed: {column} - 1 works element-wise on arrays
+    - Mixing scalars and arrays: scalar is broadcast to match array length
+    - Example: {velocity} * 2 multiplies each velocity value by 2
+    - Example: {position} - {offset} subtracts element-wise if both are arrays
+    - Example: {data} - np.mean({data}) subtracts scalar mean from each element
+    
+    Note: Python/numpy operators are already element-wise. MATLAB-style
+    dot operators (.+, .-, .*, etc.) are NOT needed and NOT supported.
     """
     
     def __init__(self):

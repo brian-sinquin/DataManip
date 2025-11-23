@@ -845,7 +845,11 @@ class DataTableStudy(Study):
             index=range(current_rows, current_rows + count),
             columns=self.table.columns
         )
-        self.table.data = pd.concat([self.table.data, new_rows], ignore_index=True)
+        # Preserve dtypes to avoid FutureWarning
+        if len(self.table.data) > 0:
+            self.table.data = pd.concat([self.table.data, new_rows], ignore_index=True)
+        else:
+            self.table.data = new_rows
         
         # Recalculate formula columns
         self.recalculate_all()

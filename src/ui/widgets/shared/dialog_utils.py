@@ -6,6 +6,7 @@ Centralizes common dialog patterns to reduce code duplication.
 
 from PySide6.QtWidgets import QMessageBox, QWidget
 from typing import Optional
+from .validators import validate_column_name as validate_col_name_func
 
 
 def show_error(parent: Optional[QWidget], title: str, message: str):
@@ -78,12 +79,10 @@ def validate_column_name(
     Returns:
         True if valid, False otherwise
     """
-    if not name:
-        show_warning(parent, "Error", f"{field_label} is required")
-        return False
+    is_valid, error_msg = validate_col_name_func(name, existing_columns, allow_existing=False)
     
-    if name in existing_columns:
-        show_warning(parent, "Error", f"Column '{name}' already exists")
+    if not is_valid:
+        show_warning(parent, "Error", error_msg)
         return False
     
     return True

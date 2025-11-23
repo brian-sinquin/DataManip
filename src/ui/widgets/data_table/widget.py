@@ -14,9 +14,9 @@ from ..shared import show_error, show_warning, confirm_action, validate_column_n
 from ..column_dialogs import (
     AddDataColumnDialog,
     AddCalculatedColumnDialog,
-    EditDataColumnDialog
+    AddDerivativeColumnDialog,
+    AddRangeColumnDialog
 )
-from ..column_dialogs_extended import AddDerivativeColumnDialog, AddRangeColumnDialog
 
 from .model import DataTableModel
 from .header import EditableHeaderView
@@ -155,10 +155,10 @@ class DataTableWidget(QWidget):
             c for c in self.study.table.columns 
             if c != exclude_column
         ]
-        # Get constants from workspace (only constant type for use in formulas)
+        # Get constants from workspace (numeric and calculated constants for use in formulas)
         if self.study.workspace:
             available_vars = [name for name, data in self.study.workspace.constants.items()
-                            if data.get("type") == "constant"]
+                            if data.get("type") in ["constant", "calculated"]]
         else:
             available_vars = []
         return available_cols, available_vars
