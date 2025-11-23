@@ -69,6 +69,7 @@ class MainWindow(QMainWindow):
         self.study_tabs = QTabWidget()
         self.study_tabs.setTabsClosable(True)
         self.study_tabs.tabCloseRequested.connect(self._close_study)
+        self.study_tabs.currentChanged.connect(self._on_tab_changed)
         
         self.setCentralWidget(self.study_tabs)
         
@@ -147,6 +148,20 @@ class MainWindow(QMainWindow):
         
         # Edit menu
         edit_menu = menubar.addMenu("&Edit")
+        
+        self.undo_action = QAction("&Undo", self)
+        self.undo_action.setShortcut("Ctrl+Z")
+        self.undo_action.triggered.connect(self._undo)
+        self.undo_action.setEnabled(False)
+        edit_menu.addAction(self.undo_action)
+        
+        self.redo_action = QAction("&Redo", self)
+        self.redo_action.setShortcut("Ctrl+Y")
+        self.redo_action.triggered.connect(self._redo)
+        self.redo_action.setEnabled(False)
+        edit_menu.addAction(self.redo_action)
+        
+        edit_menu.addSeparator()
         
         rename_study_action = QAction("&Rename Study", self)
         rename_study_action.setShortcut("F2")
@@ -999,3 +1014,82 @@ class MainWindow(QMainWindow):
             "<p>Built with PySide6, pandas, and NumPy.</p>"
             "<p><i>160/160 unit tests passing!</i></p>"
         )
+    
+    def _on_tab_changed(self, index: int):
+        """Handle tab change to update undo/redo state.
+        
+        Args:
+            index: New tab index
+        """
+        if index < 0:
+            self.undo_action.setEnabled(False)
+            self.redo_action.setEnabled(False)
+            return
+        
+        widget = self.study_tabs.widget(index)
+        
+        # Check if widget has a study with undo manager
+        if hasattr(widget, 'study') and hasattr(widget.study, 'undo_manager'):
+            undo_mgr = widget.study.undo_manager
+            
+            # Update undo/redo buttons
+            self.undo_action.setEnabled(undo_mgr.can_undo())
+            self.redo_action.setEnabled(undo_mgr.can_redo())
+            
+            # Update tooltips with descriptions
+            if undo_mgr.can_undo():
+                self.undo_action.setToolTip(f"Undo: {undo_mgr.get_undo_description()}")
+            else:
+                self.undo_action.setToolTip("Undo")
+            
+            if undo_mgr.can_redo():
+                self.redo_action.setToolTip(f"Redo: {undo_mgr.get_redo_description()}")
+            else:
+                self.redo_action.setToolTip("Redo")
+        else:
+            self.undo_action.setEnabled(False)
+            self.redo_action.setEnabled(False)
+    
+    def _undo(self):
+        """Undo last action in current study."""
+        widget = self.study_tabs.currentWidget()
+        
+        if hasattr(widget, 'study') and hasattr(widget.study, 'undo_manager'):
+            undo_mgr = widget.study.undo_manager
+            
+            if undo_mgr.can_undo():
+                description = undo_mgr.get_undo_description()
+                try:
+                    undo_mgr.undo()
+                    self.notifications.show_info(f"Undone: {description}")
+                    
+                    # Refresh widget if it has a refresh method
+                    if hasattr(widget, 'refresh'):
+                        widget.refresh()
+                    
+                    # Update undo/redo state
+                    self._on_tab_changed(self.study_tabs.currentIndex())
+                except Exception as e:
+                    self.notifications.show_error(f"Undo failed: {e}")
+    
+    def _redo(self):
+        """Redo last undone action in current study."""
+        widget = self.study_tabs.currentWidget()
+        
+        if hasattr(widget, 'study') and hasattr(widget.study, 'undo_manager'):
+            undo_mgr = widget.study.undo_manager
+            
+            if undo_mgr.can_redo():
+                description = undo_mgr.get_redo_description()
+                try:
+                    undo_mgr.redo()
+                    self.notifications.show_info(f"Redone: {description}")
+                    
+                    # Refresh widget if it has a refresh method
+                    if hasattr(widget, 'refresh'):
+                        widget.refresh()
+                    
+                    # Update undo/redo state
+                    self._on_tab_changed(self.study_tabs.currentIndex())
+                except Exception as e:
+                    self.notifications.show_error(f"Redo failed: {e}")

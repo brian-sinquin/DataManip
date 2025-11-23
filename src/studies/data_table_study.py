@@ -15,6 +15,7 @@ import concurrent.futures
 from core.study import Study
 from core.data_object import DataObject
 from core.formula_engine import FormulaEngine
+from core.undo_manager import UndoManager, UndoAction, ActionType, UndoContext
 from utils.uncertainty import FormulaToSymPy
 
 
@@ -66,6 +67,9 @@ class DataTableStudy(Study):
         
         # Formula engine
         self.formula_engine = FormulaEngine()
+        
+        # Undo/Redo manager
+        self.undo_manager = UndoManager(max_history=50)
         
         # Dirty flag tracking for lazy evaluation
         self._dirty_columns: set = set()
@@ -281,12 +285,60 @@ class DataTableStudy(Study):
         Args:
             name: Column name
         """
+        # Save state for undo
+        if self.undo_manager.is_enabled():
+            column_data = self.table.get_column(name).copy()
+            metadata = self.column_metadata.get(name, {}).copy()
+            
+            def undo_remove():
+                self.table.add_column(name, column_data)
+                if metadata:
+                    self.column_metadata[name] = metadata
+            
+            def redo_remove():
+                self.table.remove_column(name)
+                if name in self.column_metadata:
+                    del self.column_metadata[name]
+            
+            action = UndoAction(
+                action_type=ActionType.REMOVE_COLUMN,
+                undo_func=undo_remove,
+                redo_func=redo_remove,
+                description=f"Remove column '{name}'"
+            )
+            self.undo_manager.push(action)
+        
         self.table.remove_column(name)
         if name in self.column_metadata:
             del self.column_metadata[name]
     
     def rename_column(self, old_name: str, new_name: str):
         """Rename a column.
+        
+        Args:
+            old_name: Current column name
+            new_name: New column name
+        """
+        # Save state for undo
+        if self.undo_manager.is_enabled():
+            def undo_rename():
+                self.rename_column_internal(new_name, old_name)
+            
+            def redo_rename():
+                self.rename_column_internal(old_name, new_name)
+            
+            action = UndoAction(
+                action_type=ActionType.RENAME_COLUMN,
+                undo_func=undo_rename,
+                redo_func=redo_rename,
+                description=f"Rename column '{old_name}' to '{new_name}'"
+            )
+            self.undo_manager.push(action)
+        
+        self.rename_column_internal(old_name, new_name)
+    
+    def rename_column_internal(self, old_name: str, new_name: str):
+        """Internal rename without undo tracking.
         
         Args:
             old_name: Current column name
