@@ -474,11 +474,52 @@ class DataTableStudy(Study):
             else:
                 context[col_name] = col_data
         
-        # Add constants from workspace
+        # Add constants and functions from workspace
         if self.workspace:
             for const_name, const_data in self.workspace.constants.items():
-                if const_data.get("type") == "constant":
+                const_type = const_data.get("type")
+                
+                if const_type == "constant":
+                    # Numeric constant
                     context[const_name] = const_data["value"]
+                    
+                elif const_type == "function":
+                    # Custom function - convert to callable
+                    func_formula = const_data["formula"]
+                    func_params = const_data["parameters"]
+                    
+                    # Create a Python function that evaluates the formula
+                    def make_function(formula_str, params):
+                        def custom_func(*args):
+                            # Build context for function evaluation
+                            func_context = dict(zip(params, args))
+                            # Add numpy functions
+                            func_context['np'] = np
+                            func_context['pd'] = pd
+                            func_context.update({
+                                'sqrt': np.sqrt,
+                                'sin': np.sin,
+                                'cos': np.cos,
+                                'tan': np.tan,
+                                'exp': np.exp,
+                                'log': np.log,
+                                'log10': np.log10,
+                                'abs': np.abs,
+                                'pi': np.pi,
+                                'e': np.e,
+                                'arcsin': np.arcsin,
+                                'arccos': np.arccos,
+                                'arctan': np.arctan,
+                            })
+                            # Replace {param} with param in formula
+                            eval_formula = formula_str
+                            for param in params:
+                                eval_formula = eval_formula.replace(f"{{{param}}}", param)
+                            # Evaluate
+                            return eval(eval_formula, {"__builtins__": {}}, func_context)
+                        return custom_func
+                    
+                    context[const_name] = make_function(func_formula, func_params)
         
         # Evaluate formula
         try:
