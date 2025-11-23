@@ -88,6 +88,14 @@ class PlotWidget(QWidget):
         clear_action.triggered.connect(self._clear_all_series)
         self.toolbar.addAction(clear_action)
         
+        self.toolbar.addSeparator()
+        
+        export_action = QAction("Export Image", self)
+        export_action.setShortcut("Ctrl+Shift+E")
+        export_action.setToolTip("Export plot to image file (Ctrl+Shift+E)")
+        export_action.triggered.connect(self._export_image_dialog)
+        self.toolbar.addAction(export_action)
+        
         # Layout
         layout.addWidget(self.toolbar)
         layout.addWidget(self.mpl_toolbar)
@@ -134,6 +142,41 @@ class PlotWidget(QWidget):
             if index is not None:
                 self.study.remove_series(index)
                 self._refresh_plot()
+    
+    def _export_image_dialog(self):
+        """Show dialog to export plot to image file."""
+        if not self.study.series:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self,
+                "Export Error",
+                "No data to export. Add series to the plot first."
+            )
+            return
+        
+        dialog = ExportImageDialog(parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            values = dialog.get_values()
+            try:
+                self.figure.savefig(
+                    values["filepath"],
+                    dpi=values["dpi"],
+                    bbox_inches='tight',
+                    format=values["format"]
+                )
+                from PySide6.QtWidgets import QMessageBox
+                QMessageBox.information(
+                    self,
+                    "Export Success",
+                    f"Plot exported to {values['filepath']}"
+                )
+            except Exception as e:
+                from PySide6.QtWidgets import QMessageBox
+                QMessageBox.critical(
+                    self,
+                    "Export Error",
+                    f"Failed to export plot: {str(e)}"
+                )
 
 
 class AddSeriesDialog(QDialog):
@@ -294,3 +337,116 @@ class RemoveSeriesDialog(QDialog):
         if item:
             return self.list_widget.row(item)
         return None
+
+
+class ExportImageDialog(QDialog):
+    """Dialog for exporting plot to image file."""
+    
+    def __init__(self, parent=None):
+        """Initialize dialog.
+        
+        Args:
+            parent: Parent widget
+        """
+        super().__init__(parent)
+        
+        self.setWindowTitle("Export Plot Image")
+        self.setModal(True)
+        
+        self._init_ui()
+    
+    def _init_ui(self):
+        """Setup UI."""
+        layout = QFormLayout(self)
+        
+        # File path with browse button
+        file_layout = QHBoxLayout()
+        self.filepath_edit = QLineEdit()
+        self.filepath_edit.setPlaceholderText("Select output file...")
+        
+        browse_button = QPushButton("Browse...")
+        browse_button.clicked.connect(self._browse_file)
+        
+        file_layout.addWidget(self.filepath_edit)
+        file_layout.addWidget(browse_button)
+        
+        # Format selector
+        self.format_combo = QComboBox()
+        self.format_combo.addItems(["png", "svg", "pdf", "jpg"])
+        self.format_combo.currentTextChanged.connect(self._on_format_changed)
+        
+        # DPI selector
+        self.dpi_combo = QComboBox()
+        self.dpi_combo.addItems(["72", "100", "150", "200", "300", "600"])
+        self.dpi_combo.setCurrentText("150")
+        self.dpi_combo.setEditable(True)
+        
+        # Layout
+        layout.addRow("Output File:", file_layout)
+        layout.addRow("Format:", self.format_combo)
+        layout.addRow("DPI (resolution):", self.dpi_combo)
+        
+        # Buttons
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | 
+            QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self._validate_and_accept)
+        buttons.rejected.connect(self.reject)
+        layout.addRow(buttons)
+    
+    def _browse_file(self):
+        """Open file browser to select output file."""
+        from PySide6.QtWidgets import QFileDialog
+        
+        format_ext = self.format_combo.currentText()
+        filters = {
+            "png": "PNG Images (*.png)",
+            "svg": "SVG Images (*.svg)",
+            "pdf": "PDF Files (*.pdf)",
+            "jpg": "JPEG Images (*.jpg *.jpeg)"
+        }
+        
+        filepath, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Plot Image",
+            f"plot.{format_ext}",
+            filters.get(format_ext, "All Files (*)")
+        )
+        
+        if filepath:
+            self.filepath_edit.setText(filepath)
+    
+    def _on_format_changed(self, format_text: str):
+        """Update file extension when format changes."""
+        current_path = self.filepath_edit.text()
+        if current_path:
+            from pathlib import Path
+            path = Path(current_path)
+            new_path = path.with_suffix(f".{format_text}")
+            self.filepath_edit.setText(str(new_path))
+    
+    def _validate_and_accept(self):
+        """Validate input before accepting."""
+        if not self.filepath_edit.text().strip():
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self,
+                "Validation Error",
+                "Please select an output file."
+            )
+            return
+        
+        self.accept()
+    
+    def get_values(self) -> dict:
+        """Get dialog values.
+        
+        Returns:
+            Dictionary with export configuration
+        """
+        return {
+            "filepath": self.filepath_edit.text(),
+            "format": self.format_combo.currentText(),
+            "dpi": int(self.dpi_combo.currentText())
+        }

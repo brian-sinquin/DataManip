@@ -191,10 +191,11 @@ uv run pytest --cov=src --cov-report=html  # Coverage report
   - [x] File menu items (Export → CSV/Excel, Import → CSV/Excel)
   - [x] Metadata preservation in exports
   - [x] Keyboard shortcuts (Ctrl+E for CSV export, Ctrl+I for CSV import)
-- [ ] **Plot Export to Image** (~2 hours)
-  - Add export_image() method to PlotWidget
-  - PNG/SVG format support
-  - Toolbar button + File menu item
+- [x] **Plot Export to Image** (~2 hours) - COMPLETED
+  - [x] Export dialog with format selection (PNG, SVG, PDF, JPG)
+  - [x] DPI configuration (72-600)
+  - [x] Toolbar button with Ctrl+Shift+E shortcut
+  - [x] File browser integration
 - [ ] **Examples Menu** (~3 hours)
   - File → Examples submenu
   - One-click loaders for 4 demo datasets
