@@ -155,6 +155,12 @@ uv run pytest --cov=src --cov-report=html  # Coverage report
   - Calculated variables (formula-based, e.g., v = sqrt(2*g*h))
   - Custom functions (parameterized, e.g., f(x,y) = x^2 + y^2)
 - [x] **New UI** - ConstantsWidget replaces VariablesWidget with AddConstantDialog
+- [x] **UX Improvements** (Nov 23, 2025):
+  - Copy/Paste/Cut/Delete keyboard shortcuts (Ctrl+C/V/X, Del)
+  - Column type background colors for visual distinction
+  - Double-click column header to edit properties
+  - Context menu: Convert any column to DATA column
+  - Better cell selection with TSV clipboard format
 
 ### Working Features
 - [x] **4 Column Types** - DATA, CALCULATED, DERIVATIVE, RANGE fully implemented

@@ -7,10 +7,11 @@ column management, and formula evaluation.
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableView, QHeaderView,
-    QToolBar, QPushButton, QMenu, QLineEdit, QLabel, QInputDialog
+    QToolBar, QPushButton, QMenu, QLineEdit, QLabel, QInputDialog,
+    QApplication
 )
 from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex
-from PySide6.QtGui import QAction, QBrush, QColor
+from PySide6.QtGui import QAction, QBrush, QColor, QKeySequence, QShortcut
 from typing import Any, Optional, Tuple, List
 import pandas as pd
 
@@ -42,9 +43,27 @@ COLUMN_TEXT_COLORS = {
     "uncertainty": QColor(140, 0, 140), # Purple
 }
 
+# Column type background colors (for cells)
+COLUMN_BG_COLORS = {
+    "data": QColor(255, 255, 255),      # White - editable
+    "calculated": QColor(255, 250, 240), # Light cream
+    "derivative": QColor(240, 245, 255), # Light blue
+    "range": QColor(240, 255, 245),      # Light green
+    "uncertainty": QColor(250, 240, 250), # Light purple
+}
+
+# Alternate row colors
+COLUMN_BG_COLORS_ALT = {
+    "data": QColor(248, 248, 248),      # Light gray
+    "calculated": QColor(252, 248, 235), # Darker cream
+    "derivative": QColor(235, 242, 252), # Darker blue
+    "range": QColor(235, 252, 242),      # Darker green
+    "uncertainty": QColor(248, 235, 248), # Darker purple
+}
+
 
 class EditableHeaderView(QHeaderView):
-    """Custom header view that allows double-click to edit column names."""
+    """Custom header view that allows double-click to edit column properties."""
     
     def __init__(self, orientation, parent=None):
         """Initialize header view.
@@ -57,7 +76,7 @@ class EditableHeaderView(QHeaderView):
         self.table_widget = None
     
     def mouseDoubleClickEvent(self, event):
-        """Handle double-click on header to rename column.
+        """Handle double-click on header to edit column properties.
         
         Args:
             event: Mouse event
@@ -65,7 +84,7 @@ class EditableHeaderView(QHeaderView):
         if self.orientation() == Qt.Horizontal and self.table_widget:
             logical_index = self.logicalIndexAt(event.pos())
             if logical_index >= 0:
-                self.table_widget._rename_column(logical_index)
+                self.table_widget._edit_column_properties(logical_index)
         else:
             super().mouseDoubleClickEvent(event)
 
@@ -304,6 +323,9 @@ class DataTableWidget(QWidget):
         self.view.setSelectionMode(QTableView.ExtendedSelection)  # type: ignore
         self.view.setSelectionBehavior(QTableView.SelectRows)  # type: ignore
         layout.addWidget(self.view)
+        
+        # Setup keyboard shortcuts
+        self._setup_shortcuts()
     
     def _create_toolbar(self) -> QToolBar:
         """Create toolbar.
@@ -599,6 +621,12 @@ class DataTableWidget(QWidget):
             delete_col_action = menu.addAction("Delete Column")
             delete_col_action.triggered.connect(lambda: self._delete_column(col_name))
             
+            # Convert column option (for non-DATA columns)
+            if col_type != ColumnType.DATA:
+                menu.addSeparator()
+                convert_action = menu.addAction("Convert to DATA Column")
+                convert_action.triggered.connect(self._convert_column_to_data)
+            
             menu.addSeparator()
             
             # Row actions
@@ -846,3 +874,277 @@ class DataTableWidget(QWidget):
                     break
             
             self.view.setRowHidden(row, not match_found)
+    
+    def _setup_shortcuts(self):
+        """Setup keyboard shortcuts for clipboard operations."""
+        # Copy: Ctrl+C
+        copy_shortcut = QShortcut(QKeySequence.StandardKey.Copy, self)
+        copy_shortcut.activated.connect(self._on_copy)
+        
+        # Paste: Ctrl+V
+        paste_shortcut = QShortcut(QKeySequence.StandardKey.Paste, self)
+        paste_shortcut.activated.connect(self._on_paste)
+        
+        # Cut: Ctrl+X
+        cut_shortcut = QShortcut(QKeySequence.StandardKey.Cut, self)
+        cut_shortcut.activated.connect(self._on_cut)
+        
+        # Delete: Del
+        delete_shortcut = QShortcut(QKeySequence.StandardKey.Delete, self)
+        delete_shortcut.activated.connect(self._on_delete)
+    
+    def _get_selected_cells(self) -> List[Tuple[int, int]]:
+        """Get list of selected cells as (row, col) tuples.
+        
+        Returns:
+            List of (row, col) tuples
+        """
+        selection = self.view.selectionModel().selectedIndexes()
+        return [(index.row(), index.column()) for index in selection]
+    
+    def _on_copy(self):
+        """Handle copy operation (Ctrl+C)."""
+        selection = self._get_selected_cells()
+        if not selection:
+            return
+        
+        # Convert selection to TSV format
+        tsv_data = self._selection_to_tsv(selection)
+        if tsv_data:
+            clipboard = QApplication.clipboard()
+            clipboard.setText(tsv_data)
+    
+    def _selection_to_tsv(self, selection: List[Tuple[int, int]]) -> str:
+        """Convert selection to TSV format.
+        
+        Args:
+            selection: List of (row, col) tuples
+            
+        Returns:
+            TSV-formatted string
+        """
+        if not selection:
+            return ""
+        
+        # Group by row
+        rows_dict = {}
+        for row, col in selection:
+            if row not in rows_dict:
+                rows_dict[row] = {}
+            rows_dict[row][col] = (row, col)
+        
+        # Build TSV output
+        lines = []
+        for row in sorted(rows_dict.keys()):
+            cols_dict = rows_dict[row]
+            min_col = min(cols_dict.keys())
+            max_col = max(cols_dict.keys())
+            
+            # Build line with all columns in range
+            values = []
+            for col in range(min_col, max_col + 1):
+                if col < len(self.study.table.columns):
+                    col_name = self.study.table.columns[col]
+                    if col in cols_dict and row < len(self.study.table.data):
+                        value = self.study.table.data[col_name].iloc[row]
+                        values.append(str(value) if pd.notna(value) else "")
+                    else:
+                        values.append("")
+            
+            lines.append("\t".join(values))
+        
+        return "\n".join(lines)
+    
+    def _on_paste(self):
+        """Handle paste operation (Ctrl+V)."""
+        clipboard = QApplication.clipboard()
+        tsv_data = clipboard.text()
+        if not tsv_data:
+            return
+        
+        selection = self._get_selected_cells()
+        if not selection:
+            return
+        
+        # Get top-left of selection
+        start_row = min(row for row, col in selection)
+        start_col = min(col for row, col in selection)
+        
+        # Parse and paste TSV data
+        self._paste_tsv(tsv_data, start_row, start_col)
+    
+    def _paste_tsv(self, tsv_data: str, start_row: int, start_col: int):
+        """Paste TSV data into table.
+        
+        Args:
+            tsv_data: Tab-separated values
+            start_row: Starting row
+            start_col: Starting column
+        """
+        lines = tsv_data.strip().split('\n')
+        errors = []
+        
+        for row_offset, line in enumerate(lines):
+            values = line.split('\\t')
+            for col_offset, value in enumerate(values):
+                target_row = start_row + row_offset
+                target_col = start_col + col_offset
+                
+                # Check bounds
+                if target_row >= len(self.study.table.data):
+                    continue
+                if target_col >= len(self.study.table.columns):
+                    continue
+                
+                col_name = self.study.table.columns[target_col]
+                
+                # Skip non-editable columns
+                if col_name in self.study.column_metadata:
+                    col_type = self.study.column_metadata[col_name].get("type", "data")
+                    if col_type != ColumnType.DATA:
+                        continue
+                
+                # Set value
+                try:
+                    if value.strip() == "":
+                        self.study.table.data.loc[target_row, col_name] = pd.NA
+                    else:
+                        # Try to convert to appropriate type
+                        try:
+                            self.study.table.data.loc[target_row, col_name] = float(value)
+                        except ValueError:
+                            self.study.table.data.loc[target_row, col_name] = value
+                except Exception as e:
+                    errors.append(f"Row {target_row}, Col {col_name}: {str(e)}")
+        
+        # Recalculate formulas
+        self.study.recalculate_all()
+        
+        # Refresh view
+        self.model.layoutChanged.emit()  # type: ignore
+        
+        if errors:
+            show_warning(self, "Paste Warnings", f"Some cells could not be pasted:\n" + "\n".join(errors[:5]))
+    
+    def _on_cut(self):
+        """Handle cut operation (Ctrl+X)."""
+        self._on_copy()
+        self._on_delete()
+    
+    def _on_delete(self):
+        """Handle delete operation (Del key)."""
+        selection = self._get_selected_cells()
+        if not selection:
+            return
+        
+        # Clear selected cells
+        for row, col in selection:
+            if col >= len(self.study.table.columns):
+                continue
+            
+            col_name = self.study.table.columns[col]
+            
+            # Skip non-editable columns
+            if col_name in self.study.column_metadata:
+                col_type = self.study.column_metadata[col_name].get("type", "data")
+                if col_type != ColumnType.DATA:
+                    continue
+            
+            # Clear value
+            if row < len(self.study.table.data):
+                self.study.table.data.loc[row, col_name] = pd.NA
+        
+        # Recalculate and refresh
+        self.study.recalculate_all()
+        self.model.layoutChanged.emit()  # type: ignore
+    
+    def _edit_column_properties(self, col_index: int):
+        """Open dialog to edit column properties.
+        
+        Args:
+            col_index: Column index
+        """
+        if col_index >= len(self.study.table.columns):
+            return
+        
+        col_name = self.study.table.columns[col_index]
+        col_meta = self.study.column_metadata.get(col_name, {})
+        col_type = col_meta.get("type", "data")
+        
+        # Open appropriate dialog based on column type
+        if col_type == ColumnType.DATA:
+            self._edit_data_column(col_name)
+        elif col_type == ColumnType.CALCULATED:
+            self._edit_calculated_column(col_name)
+        elif col_type == ColumnType.DERIVATIVE:
+            self._edit_derivative_column(col_name)
+        elif col_type == ColumnType.RANGE:
+            self._edit_range_column(col_name)
+    
+    def _edit_data_column(self, col_name: str):
+        """Edit data column properties.
+        
+        Args:
+            col_name: Column name
+        """
+        # Future: Open dialog to edit column properties
+        show_warning(self, "Edit Column", f"Column editing dialog for '{col_name}' coming soon!")
+    
+    def _edit_calculated_column(self, col_name: str):
+        """Edit calculated column properties.
+        
+        Args:
+            col_name: Column name
+        """
+        # Future: Open dialog to edit column properties
+        show_warning(self, "Edit Column", f"Column editing dialog for '{col_name}' coming soon!")
+    
+    def _edit_derivative_column(self, col_name: str):
+        """Edit derivative column properties.
+        
+        Args:
+            col_name: Column name
+        """
+        # Future: Open dialog to edit column properties  
+        show_warning(self, "Edit Column", f"Column editing dialog for '{col_name}' coming soon!")
+    
+    def _edit_range_column(self, col_name: str):
+        """Edit range column properties.
+        
+        Args:
+            col_name: Column name
+        """
+        # Future: Open dialog to edit column properties
+        show_warning(self, "Edit Column", f"Column editing dialog for '{col_name}' coming soon!")
+    
+    def _convert_column_to_data(self):
+        """Convert selected column to DATA type."""
+        current_col = self.view.currentIndex().column()
+        if current_col < 0:
+            show_warning(self, "No Selection", "Please select a column to convert.")
+            return
+        
+        col_name = self.study.table.columns[current_col]
+        col_type = self.study.get_column_type(col_name)
+        
+        if col_type == ColumnType.DATA:
+            show_warning(self, "Already Data", f"Column '{col_name}' is already a DATA column.")
+            return
+        
+        # Confirm conversion
+        if not confirm_action(
+            self,
+            "Convert Column",
+            f"Convert '{col_name}' from {col_type.upper()} to DATA column?\\n\\n"
+            "Current values will be preserved but the column will become editable."
+        ):
+            return
+        
+        # Convert: keep data, change metadata
+        self.study.column_metadata[col_name]["type"] = ColumnType.DATA
+        # Clear type-specific metadata
+        for key in ["formula", "derivative_of", "with_respect_to", "range_type", "range_start", "range_stop", "range_count"]:
+            self.study.column_metadata[col_name].pop(key, None)
+        
+        self._refresh_table()
+        show_warning(self, "Conversion Complete", f"Column '{col_name}' is now a DATA column.")
