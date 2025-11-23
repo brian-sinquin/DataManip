@@ -18,7 +18,12 @@ matplotlib.use('QtAgg')
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
+import numpy as np
 
+from constants import (
+    COLUMN_COMBO_MIN_WIDTH, STATS_SPLITTER_LEFT, STATS_SPLITTER_RIGHT,
+    HISTOGRAM_MIN_BINS, HISTOGRAM_MAX_BINS
+)
 from studies.statistics_study import StatisticsStudy
 
 
@@ -57,7 +62,7 @@ class StatisticsWidget(QWidget):
         selection_layout.addWidget(QLabel("Analyze Column:"))
         
         self.column_combo = QComboBox()
-        self.column_combo.setMinimumWidth(200)
+        self.column_combo.setMinimumWidth(COLUMN_COMBO_MIN_WIDTH)
         self.column_combo.currentIndexChanged.connect(self._on_column_changed)
         selection_layout.addWidget(self.column_combo)
         

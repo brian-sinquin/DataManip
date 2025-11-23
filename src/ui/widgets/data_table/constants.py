@@ -1,7 +1,6 @@
 """Constants for DataTable widget styling and symbols.
 
-This module defines visual and display constants for the DataTable widget:
-- DISPLAY_PRECISION: Number of significant digits for cell display (EditRole preserves full precision)
+This module defines visual constants specific to the DataTable widget:
 - COLUMN_SYMBOLS: Unicode symbols for visual column type identification in headers, tooltips, and dialogs
 
 The column symbols provide quick visual feedback about column types:
@@ -10,10 +9,11 @@ The column symbols provide quick visual feedback about column types:
 - d/dx: DERIVATIVE columns - numerical differentiation
 - ⋯ (ellipsis): RANGE columns - generated sequences
 - δ (delta): UNCERTAINTY columns - error propagation
+
+For DISPLAY_PRECISION, import from the main constants module.
 """
 
-# Display settings
-DISPLAY_PRECISION = 3  # Number of significant digits to display in cells
+from constants import DISPLAY_PRECISION
 
 # Column type symbols for headers
 COLUMN_SYMBOLS = {

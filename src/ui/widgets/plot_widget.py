@@ -377,7 +377,7 @@ class ExportImageDialog(QDialog):
         
         # DPI selector
         self.dpi_combo = QComboBox()
-        self.dpi_combo.addItems(["72", "100", "150", "200", "300", "600"])
+        self.dpi_combo.addItems(PLOT_DPI_OPTIONS)
         self.dpi_combo.setCurrentText("150")
         self.dpi_combo.setEditable(True)
         

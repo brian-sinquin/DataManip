@@ -1065,7 +1065,7 @@ class DataTableStudy(Study):
                 except (AttributeError, TypeError):
                     # Skip cells that can't be converted to string
                     pass
-            ws.column_dimensions[col_letter].width = min(max_length + 2, 50)
+            ws.column_dimensions[col_letter].width = min(max_length + EXCEL_COLUMN_WIDTH_PADDING, EXCEL_MAX_COLUMN_WIDTH)
         
         # Save workbook
         wb.save(filepath)

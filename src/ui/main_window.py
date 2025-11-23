@@ -13,6 +13,10 @@ import json
 from pathlib import Path
 import numpy as np
 
+from constants import (
+    MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT,
+    APP_NAME, APP_VERSION, APP_DESCRIPTION
+)
 from core.workspace import Workspace
 from core.study import Study
 from studies.data_table_study import DataTableStudy, ColumnType
@@ -33,8 +37,8 @@ class MainWindow(QMainWindow):
         """Initialize main window."""
         super().__init__()
         
-        self.setWindowTitle("DataManip v0.2.0 - Data Analysis for Experimental Sciences")
-        self.resize(1200, 800)
+        self.setWindowTitle(f"{APP_NAME} v{APP_VERSION} - {APP_DESCRIPTION}")
+        self.resize(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT)
         
         # Single workspace
         self.workspace = Workspace("Workspace", "numerical")

@@ -16,6 +16,10 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction
 from typing import Dict, Any, Optional
 
+from constants import (
+    DIALOG_CONSTANTS_WIDTH, DIALOG_CONSTANTS_HEIGHT,
+    FORMULA_INPUT_MAX_HEIGHT
+)
 from .shared.dialog_utils import show_warning, show_info, confirm_action
 
 
@@ -33,7 +37,7 @@ class AddConstantDialog(QDialog):
         super().__init__(parent)
         
         self.setWindowTitle("Edit Constant" if edit_mode else "Add Constant")
-        self.resize(500, 400)
+        self.resize(DIALOG_CONSTANTS_WIDTH, DIALOG_CONSTANTS_HEIGHT)
         
         layout = QVBoxLayout(self)
         

@@ -63,7 +63,7 @@ class DataTableWidget(QWidget):
         
         self.view.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)  # type: ignore
         self.view.horizontalHeader().setStretchLastSection(True)  # type: ignore
-        self.view.verticalHeader().setDefaultSectionSize(24)  # Compact rows
+        self.view.verticalHeader().setDefaultSectionSize(TABLE_ROW_HEIGHT)
         self.view.setAlternatingRowColors(True)  # Better readability
         self.view.setContextMenuPolicy(Qt.CustomContextMenu)  # type: ignore
         self.view.customContextMenuRequested.connect(self._show_context_menu)

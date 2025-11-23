@@ -581,8 +581,8 @@ class CSVImportDialog(QDialog):
         self.delimiter_combo.currentIndexChanged.connect(self._on_config_changed)
         form.addRow("Delimiter:", self.delimiter_combo)
         
-        self.custom_delimiter_edit = QLineEdit()
-        self.custom_delimiter_edit.setMaximumWidth(50)
+        self.custom_delimiter_edit = QLineEdit(",")
+        self.custom_delimiter_edit.setMaximumWidth(DELIMITER_INPUT_MAX_WIDTH)
         self.custom_delimiter_edit.setVisible(False)
         self.custom_delimiter_edit.textChanged.connect(self._on_config_changed)
         form.addRow("Custom Delimiter:", self.custom_delimiter_edit)
@@ -590,7 +590,7 @@ class CSVImportDialog(QDialog):
         # Header row
         self.header_row_spin = QSpinBox()
         self.header_row_spin.setMinimum(0)
-        self.header_row_spin.setMaximum(100)
+        self.header_row_spin.setMaximum(CSV_MAX_HEADER_ROW)
         self.header_row_spin.setValue(0)
         self.header_row_spin.setToolTip("Row number to use as column headers (0-indexed). Set to -1 for no header.")
         self.header_row_spin.setSpecialValueText("No header")

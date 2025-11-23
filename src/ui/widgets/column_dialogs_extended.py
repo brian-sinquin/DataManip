@@ -7,6 +7,11 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
+from constants import (
+    DIALOG_MEDIUM_WIDTH, DIALOG_MEDIUM_HEIGHT,
+    DIALOG_DERIVATIVE_WIDTH, DIALOG_DERIVATIVE_HEIGHT
+)
+
 
 class AddDerivativeColumnDialog(QDialog):
     """Dialog for adding a derivative column."""
@@ -24,7 +29,7 @@ class AddDerivativeColumnDialog(QDialog):
         
         self.setWindowTitle("Add Derivative Column")
         self.setModal(True)
-        self.resize(450, 300)
+        self.resize(DIALOG_MEDIUM_WIDTH, DIALOG_MEDIUM_HEIGHT)
         
         # Setup UI
         layout = QVBoxLayout(self)
@@ -116,7 +121,7 @@ class AddRangeColumnDialog(QDialog):
         
         self.setWindowTitle("Add Range Column")
         self.setModal(True)
-        self.resize(450, 400)
+        self.resize(DIALOG_DERIVATIVE_WIDTH, DIALOG_DERIVATIVE_HEIGHT)
         
         # Setup UI
         layout = QVBoxLayout(self)
