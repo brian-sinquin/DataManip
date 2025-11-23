@@ -19,6 +19,7 @@ from studies.data_table_study import DataTableStudy, ColumnType
 from studies.plot_study import PlotStudy
 from .widgets import DataTableWidget, ConstantsWidget
 from .widgets.plot_widget import PlotWidget
+from .widgets.column_dialogs import CSVImportDialog
 
 
 class MainWindow(QMainWindow):
@@ -478,33 +479,29 @@ class MainWindow(QMainWindow):
         
         if filename:
             try:
-                # Ask about metadata
-                reply = QMessageBox.question(
-                    self,
-                    "Has Metadata",
-                    "Does the CSV file contain metadata comments?",
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                    QMessageBox.StandardButton.Yes
-                )
-                has_metadata = reply == QMessageBox.StandardButton.Yes
+                # Open CSV import dialog with preview
+                dialog = CSVImportDialog(filename, self)
                 
-                # Ask for study name
-                import os
-                default_name = os.path.splitext(os.path.basename(filename))[0]
-                name, ok = QInputDialog.getText(
-                    self,
-                    "Import CSV",
-                    "Study name:",
-                    text=default_name
-                )
-                
-                if ok and name:
-                    study = DataTableStudy(name, workspace=self.workspace)
-                    study.import_from_csv(filename, has_metadata=has_metadata)
+                if dialog.exec():
+                    settings = dialog.get_import_settings()
                     
-                    self._add_study(study)
-                    self.study_tabs.setCurrentIndex(self.study_tabs.count() - 1)
-                    self.statusBar().showMessage(f"Imported from {filename}")
+                    # Ask for study name
+                    import os
+                    default_name = os.path.splitext(os.path.basename(filename))[0]
+                    name, ok = QInputDialog.getText(
+                        self,
+                        "Import CSV",
+                        "Study name:",
+                        text=default_name
+                    )
+                    
+                    if ok and name:
+                        study = DataTableStudy(name, workspace=self.workspace)
+                        study.import_from_csv(filename, **settings)
+                        
+                        self._add_study(study)
+                        self.study_tabs.setCurrentIndex(self.study_tabs.count() - 1)
+                        self.statusBar().showMessage(f"Imported from {filename}")
             except Exception as e:
                 QMessageBox.critical(
                     self,

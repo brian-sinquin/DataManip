@@ -3,7 +3,7 @@
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLineEdit, QTextEdit, QComboBox, QPushButton,
-    QLabel, QCheckBox
+    QLabel, QCheckBox, QTableWidget, QTableWidgetItem, QHeaderView, QSpinBox
 )
 from PySide6.QtCore import Qt
 
@@ -245,7 +245,6 @@ class AddDerivativeColumnDialog(QDialog):
             self.x_combo.setCurrentIndex(0)
         form.addRow("Denominator (x):", self.x_combo)
         
-        from PySide6.QtWidgets import QSpinBox
         self.order_spin = QSpinBox()
         self.order_spin.setMinimum(1)
         self.order_spin.setMaximum(3)
@@ -465,3 +464,303 @@ class AddRangeColumnDialog(QDialog):
             result["step"] = self.step_spin.value()
         
         return result
+
+
+class EditDataColumnDialog(QDialog):
+    """Dialog for editing data column properties."""
+    
+    def __init__(self, col_name: str, unit: str = None, parent=None):
+        """Initialize dialog.
+        
+        Args:
+            col_name: Current column name
+            unit: Current unit (optional)
+            parent: Parent widget
+        """
+        super().__init__(parent)
+        
+        self.original_name = col_name
+        
+        self.setWindowTitle(f"Edit Column: {col_name}")
+        self.setModal(True)
+        self.resize(400, 180)
+        
+        # Setup UI
+        layout = QVBoxLayout(self)
+        
+        # Form
+        form = QFormLayout()
+        
+        self.name_edit = QLineEdit()
+        self.name_edit.setText(col_name)
+        form.addRow("Column Name:", self.name_edit)
+        
+        self.unit_edit = QLineEdit()
+        self.unit_edit.setPlaceholderText("e.g., m, s, kg, m/s^2")
+        if unit:
+            self.unit_edit.setText(unit)
+        form.addRow("Unit (optional):", self.unit_edit)
+        
+        layout.addLayout(form)
+        
+        # Info
+        info = QLabel(
+            "<small><i>Note: Renaming will update all formulas referencing this column.</i></small>"
+        )
+        info.setWordWrap(True)
+        layout.addWidget(info)
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_btn)
+        
+        ok_btn = QPushButton("OK")
+        ok_btn.setDefault(True)
+        ok_btn.clicked.connect(self._accept)
+        button_layout.addWidget(ok_btn)
+        
+        layout.addLayout(button_layout)
+    
+    def _accept(self):
+        """Accept dialog with validation."""
+        name = self.name_edit.text().strip()
+        
+        if not name:
+            show_warning(self, "Error", "Column name cannot be empty")
+            return
+        
+        self.accept()
+    
+    def get_values(self):
+        """Get dialog values.
+        
+        Returns:
+            Tuple of (name, unit)
+        """
+        name = self.name_edit.text().strip()
+        unit = self.unit_edit.text().strip() or None
+        return name, unit
+
+
+class CSVImportDialog(QDialog):
+    """Advanced CSV import dialog with preview and configuration options."""
+    
+    def __init__(self, filepath: str, parent=None):
+        """Initialize dialog.
+        
+        Args:
+            filepath: Path to CSV file
+            parent: Parent widget
+        """
+        super().__init__(parent)
+        
+        self.filepath = filepath
+        
+        import os
+        filename = os.path.basename(filepath)
+        self.setWindowTitle(f"Import CSV: {filename}")
+        self.setModal(True)
+        self.resize(800, 600)
+        
+        # Setup UI
+        layout = QVBoxLayout(self)
+        
+        # Configuration section
+        config_group = QLabel("<b>Import Configuration</b>")
+        layout.addWidget(config_group)
+        
+        form = QFormLayout()
+        
+        # Delimiter
+        self.delimiter_combo = QComboBox()
+        self.delimiter_combo.addItems(["Comma (,)", "Semicolon (;)", "Tab", "Space", "Custom"])
+        self.delimiter_combo.currentIndexChanged.connect(self._on_config_changed)
+        form.addRow("Delimiter:", self.delimiter_combo)
+        
+        self.custom_delimiter_edit = QLineEdit()
+        self.custom_delimiter_edit.setMaximumWidth(50)
+        self.custom_delimiter_edit.setVisible(False)
+        self.custom_delimiter_edit.textChanged.connect(self._on_config_changed)
+        form.addRow("Custom Delimiter:", self.custom_delimiter_edit)
+        
+        # Header row
+        self.header_row_spin = QSpinBox()
+        self.header_row_spin.setMinimum(0)
+        self.header_row_spin.setMaximum(100)
+        self.header_row_spin.setValue(0)
+        self.header_row_spin.setToolTip("Row number to use as column headers (0-indexed). Set to -1 for no header.")
+        self.header_row_spin.setSpecialValueText("No header")
+        self.header_row_spin.setMinimum(-1)
+        self.header_row_spin.valueChanged.connect(self._on_config_changed)
+        form.addRow("Header Row:", self.header_row_spin)
+        
+        # Skip rows
+        self.skip_rows_spin = QSpinBox()
+        self.skip_rows_spin.setMinimum(0)
+        self.skip_rows_spin.setMaximum(1000)
+        self.skip_rows_spin.setValue(0)
+        self.skip_rows_spin.setToolTip("Number of rows to skip at the beginning (before header)")
+        self.skip_rows_spin.valueChanged.connect(self._on_config_changed)
+        form.addRow("Skip Rows:", self.skip_rows_spin)
+        
+        # Encoding
+        self.encoding_combo = QComboBox()
+        self.encoding_combo.addItems(["utf-8", "latin-1", "cp1252", "iso-8859-1", "ascii"])
+        self.encoding_combo.setToolTip("File encoding (use utf-8 for most modern files)")
+        self.encoding_combo.currentTextChanged.connect(self._on_config_changed)
+        form.addRow("Encoding:", self.encoding_combo)
+        
+        # Decimal separator
+        self.decimal_combo = QComboBox()
+        self.decimal_combo.addItems(["Period (.)", "Comma (,)"])
+        self.decimal_combo.setToolTip("Decimal separator for numbers")
+        self.decimal_combo.currentIndexChanged.connect(self._on_config_changed)
+        form.addRow("Decimal:", self.decimal_combo)
+        
+        layout.addLayout(form)
+        
+        # Metadata checkbox
+        self.has_metadata_checkbox = QCheckBox("File contains metadata comments (#)")
+        self.has_metadata_checkbox.setChecked(True)
+        self.has_metadata_checkbox.setToolTip("Check if CSV has metadata in comment lines starting with #")
+        layout.addWidget(self.has_metadata_checkbox)
+        
+        # Preview section
+        layout.addWidget(QLabel("<b>Preview</b>"))
+        
+        self.preview_table = QTableWidget()
+        self.preview_table.setMaximumHeight(300)
+        self.preview_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        layout.addWidget(self.preview_table)
+        
+        # Status label
+        self.status_label = QLabel()
+        self.status_label.setWordWrap(True)
+        layout.addWidget(self.status_label)
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        refresh_btn = QPushButton("Refresh Preview")
+        refresh_btn.clicked.connect(self._update_preview)
+        button_layout.addWidget(refresh_btn)
+        
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_btn)
+        
+        import_btn = QPushButton("Import")
+        import_btn.setDefault(True)
+        import_btn.clicked.connect(self.accept)
+        button_layout.addWidget(import_btn)
+        
+        layout.addLayout(button_layout)
+        
+        # Connect custom delimiter visibility
+        self.delimiter_combo.currentIndexChanged.connect(self._toggle_custom_delimiter)
+        
+        # Initial preview
+        self._update_preview()
+    
+    def _toggle_custom_delimiter(self):
+        """Show/hide custom delimiter input."""
+        is_custom = self.delimiter_combo.currentText() == "Custom"
+        self.custom_delimiter_edit.setVisible(is_custom)
+    
+    def _on_config_changed(self):
+        """Auto-refresh preview when config changes."""
+        # Debounce rapid changes
+        pass  # User can click Refresh button
+    
+    def _get_delimiter(self) -> str:
+        """Get current delimiter setting."""
+        delim_text = self.delimiter_combo.currentText()
+        if delim_text == "Comma (,)":
+            return ","
+        elif delim_text == "Semicolon (;)":
+            return ";"
+        elif delim_text == "Tab":
+            return "\t"
+        elif delim_text == "Space":
+            return " "
+        else:  # Custom
+            return self.custom_delimiter_edit.text() or ","
+    
+    def _get_decimal(self) -> str:
+        """Get decimal separator."""
+        return "." if self.decimal_combo.currentIndex() == 0 else ","
+    
+    def _update_preview(self):
+        """Update preview table."""
+        import pandas as pd
+        
+        try:
+            # Get settings
+            delimiter = self._get_delimiter()
+            encoding = self.encoding_combo.currentText()
+            decimal = self._get_decimal()
+            skip_rows = self.skip_rows_spin.value()
+            header_row = self.header_row_spin.value()
+            
+            # Adjust header for pandas (None means no header)
+            header = None if header_row < 0 else header_row
+            
+            # Read CSV with settings
+            df = pd.read_csv(
+                self.filepath,
+                delimiter=delimiter,
+                encoding=encoding,
+                decimal=decimal,
+                skiprows=skip_rows if skip_rows > 0 else None,
+                header=header,
+                nrows=20,  # Preview first 20 rows
+                comment='#' if self.has_metadata_checkbox.isChecked() else None
+            )
+            
+            # If no header, generate column names
+            if header is None:
+                df.columns = [f"Column_{i}" for i in range(len(df.columns))]
+            
+            # Update preview table
+            self.preview_table.clear()
+            self.preview_table.setRowCount(len(df))
+            self.preview_table.setColumnCount(len(df.columns))
+            self.preview_table.setHorizontalHeaderLabels([str(col) for col in df.columns])
+            
+            for i, row in df.iterrows():
+                for j, value in enumerate(row):
+                    item = QTableWidgetItem(str(value))
+                    self.preview_table.setItem(i, j, item)
+            
+            # Update status
+            self.status_label.setText(
+                f"<span style='color: green;'>✓ Preview loaded: {len(df)} rows × {len(df.columns)} columns (showing first 20 rows)</span>"
+            )
+            
+        except Exception as e:
+            self.status_label.setText(
+                f"<span style='color: red;'>✗ Error loading preview: {str(e)}</span>"
+            )
+            self.preview_table.clear()
+    
+    def get_import_settings(self):
+        """Get import configuration.
+        
+        Returns:
+            Dictionary with import settings
+        """
+        header_row = self.header_row_spin.value()
+        
+        return {
+            "delimiter": self._get_delimiter(),
+            "encoding": self.encoding_combo.currentText(),
+            "decimal": self._get_decimal(),
+            "skip_rows": self.skip_rows_spin.value(),
+            "header": None if header_row < 0 else header_row,
+            "has_metadata": self.has_metadata_checkbox.isChecked()
+        }

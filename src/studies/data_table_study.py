@@ -657,12 +657,26 @@ class DataTableStudy(Study):
             # Write data using pandas
             df.to_csv(f, index=False)
     
-    def import_from_csv(self, filepath: str, has_metadata: bool = True) -> None:
-        """Import table from CSV format.
+    def import_from_csv(
+        self, 
+        filepath: str, 
+        has_metadata: bool = True,
+        delimiter: str = ",",
+        encoding: str = "utf-8",
+        decimal: str = ".",
+        skip_rows: int = 0,
+        header: int = 0
+    ) -> None:
+        """Import table from CSV format with advanced configuration.
         
         Args:
             filepath: Path to CSV file
-            has_metadata: If True, expects metadata comment header
+            has_metadata: Whether file contains metadata comments
+            delimiter: Column delimiter (default: ",")
+            encoding: File encoding (default: "utf-8")
+            decimal: Decimal separator for numbers (default: ".")
+            skip_rows: Number of rows to skip at beginning
+            header: Row number to use as column names (None for no header)
             
         Note:
             This replaces current table data. Complex metadata (formulas, derivatives)
@@ -670,10 +684,23 @@ class DataTableStudy(Study):
             
         Example:
             >>> study.import_from_csv("data.csv")
-            >>> study.import_from_csv("simple.csv", has_metadata=False)
+            >>> study.import_from_csv("euro.csv", delimiter=";", decimal=",")
+            >>> study.import_from_csv("simple.csv", has_metadata=False, header=None)
         """
-        # Load CSV (skip comment lines)
-        df = pd.read_csv(filepath, comment='#' if has_metadata else None)
+        # Read CSV with advanced parameters
+        df = pd.read_csv(
+            filepath, 
+            delimiter=delimiter,
+            encoding=encoding,
+            decimal=decimal,
+            skiprows=skip_rows if skip_rows > 0 else None,
+            header=header,
+            comment='#' if has_metadata else None
+        )
+        
+        # If no header, generate column names
+        if header is None:
+            df.columns = [f"Column_{i}" for i in range(len(df.columns))]
         
         # Clear existing table
         self.table = DataObject.from_dataframe("table", df)

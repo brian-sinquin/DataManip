@@ -13,7 +13,7 @@ from studies.plot_study import PlotStudy
 
 def test_plot_export_requires_series():
     """Test that plot export validates series presence."""
-    workspace = Workspace()
+    workspace = Workspace("Test Workspace", "general")
     study = PlotStudy("Test Plot", workspace=workspace)
     
     # No series yet - should have empty series list
@@ -22,7 +22,7 @@ def test_plot_export_requires_series():
 
 def test_plot_export_with_data():
     """Test plot export with actual data."""
-    workspace = Workspace()
+    workspace = Workspace("Test Workspace", "general")
     
     # Create data table
     data_study = DataTableStudy("Data", workspace=workspace)

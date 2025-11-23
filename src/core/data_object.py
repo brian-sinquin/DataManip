@@ -77,6 +77,20 @@ class DataObject:
         return cls(name=name, data=df, metadata=metadata)
     
     @classmethod
+    def from_dataframe(cls, name: str, df: pd.DataFrame, **metadata) -> DataObject:
+        """Create DataObject from pandas DataFrame.
+        
+        Args:
+            name: Object name
+            df: Pandas DataFrame
+            **metadata: Additional metadata
+            
+        Returns:
+            New DataObject instance
+        """
+        return cls(name=name, data=df.copy(), metadata=metadata)
+    
+    @classmethod
     def empty(cls, name: str, rows: int = 0, columns: Optional[list[str]] = None) -> DataObject:
         """Create empty DataObject.
         

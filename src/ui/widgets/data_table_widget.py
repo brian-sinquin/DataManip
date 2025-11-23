@@ -23,6 +23,7 @@ from .column_dialogs import (
     AddCalculatedColumnDialog, 
     AddDerivativeColumnDialog,
     AddRangeColumnDialog,
+    EditDataColumnDialog
 )
 
 # Column type symbols for headers
@@ -218,6 +219,13 @@ class DataTableModel(QAbstractTableModel):
                 color = COLUMN_TEXT_COLORS.get(col_type, QColor(0, 0, 0))
                 return QBrush(color)
         
+        # Bold font for headers
+        if role == Qt.FontRole and orientation == Qt.Horizontal:  # type: ignore
+            from PySide6.QtGui import QFont
+            font = QFont()
+            font.setBold(True)
+            return font
+        
         # Tooltip with column info
         if role == Qt.ToolTipRole and orientation == Qt.Horizontal:  # type: ignore
             if section < len(self.study.table.columns):
@@ -299,11 +307,6 @@ class DataTableWidget(QWidget):
         self.toolbar = self._create_toolbar()
         layout.addWidget(self.toolbar)
         
-        # Search/Filter bar
-        self.search_bar = self._create_search_bar()
-        layout.addWidget(self.search_bar)
-        self.search_bar.hide()  # Hidden by default
-        
         # Table view
         self.model = DataTableModel(study)
         self.view = QTableView()
@@ -321,7 +324,7 @@ class DataTableWidget(QWidget):
         self.view.setContextMenuPolicy(Qt.CustomContextMenu)  # type: ignore
         self.view.customContextMenuRequested.connect(self._show_context_menu)
         self.view.setSelectionMode(QTableView.ExtendedSelection)  # type: ignore
-        self.view.setSelectionBehavior(QTableView.SelectRows)  # type: ignore
+        self.view.setSelectionBehavior(QTableView.SelectItems)  # type: ignore
         layout.addWidget(self.view)
         
         # Setup keyboard shortcuts
@@ -382,44 +385,7 @@ class DataTableWidget(QWidget):
         
         toolbar.addSeparator()
         
-        # View options
-        self.search_action = QAction("🔍 Search", self)
-        self.search_action.setShortcut("Ctrl+F")
-        self.search_action.setCheckable(True)
-        self.search_action.setToolTip("Toggle search bar (Ctrl+F)")
-        self.search_action.triggered.connect(self._toggle_search)
-        toolbar.addAction(self.search_action)
-        
-        
         return toolbar
-    
-    def _create_search_bar(self) -> QWidget:
-        """Create search/filter bar.
-        
-        Returns:
-            QWidget with search controls
-        """
-        search_widget = QWidget()
-        search_layout = QHBoxLayout(search_widget)
-        search_layout.setContentsMargins(5, 2, 5, 2)
-        
-        search_layout.addWidget(QLabel("Search:"))
-        
-        self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Type to search in all columns...")
-        self.search_input.textChanged.connect(self._filter_table)
-        search_layout.addWidget(self.search_input)
-        
-        clear_btn = QPushButton("Clear")
-        clear_btn.clicked.connect(lambda: self.search_input.clear())
-        search_layout.addWidget(clear_btn)
-        
-        close_btn = QPushButton("✖")
-        close_btn.setFixedWidth(30)
-        close_btn.clicked.connect(lambda: self._toggle_search(False))
-        search_layout.addWidget(close_btn)
-        
-        return search_widget
     
     def _get_context(self, exclude_column: Optional[str] = None) -> Tuple[List[str], List[str]]:
         """Get available columns and variables.
@@ -833,48 +799,6 @@ class DataTableWidget(QWidget):
         except Exception as e:
             show_error(self, "Paste Error", f"Failed to paste data: {str(e)}")
     
-    def _toggle_search(self, checked: Optional[bool] = None):
-        """Toggle search bar visibility.
-        
-        Args:
-            checked: Override toggle state (True=show, False=hide, None=toggle)
-        """
-        if checked is None:
-            checked = self.search_action.isChecked()
-        
-        self.search_bar.setVisible(checked)
-        self.search_action.setChecked(checked)
-        
-        if checked:
-            self.search_input.setFocus()
-        else:
-            self.search_input.clear()
-    
-    def _filter_table(self, text: str):
-        """Filter table rows based on search text.
-        
-        Args:
-            text: Search text
-        """
-        # Simple implementation: hide rows that don't match
-        if not text:
-            # Show all rows
-            for row in range(self.model.rowCount()):
-                self.view.setRowHidden(row, False)
-            return
-        
-        text_lower = text.lower()
-        for row in range(self.model.rowCount()):
-            match_found = False
-            for col in range(self.model.columnCount()):
-                index = self.model.index(row, col)
-                value = self.model.data(index, Qt.DisplayRole)  # type: ignore
-                if value and text_lower in str(value).lower():
-                    match_found = True
-                    break
-            
-            self.view.setRowHidden(row, not match_found)
-    
     def _setup_shortcuts(self):
         """Setup keyboard shortcuts for clipboard operations."""
         # Copy: Ctrl+C
@@ -1087,8 +1011,39 @@ class DataTableWidget(QWidget):
         Args:
             col_name: Column name
         """
-        # Future: Open dialog to edit column properties
-        show_warning(self, "Edit Column", f"Column editing dialog for '{col_name}' coming soon!")
+        # Get current metadata
+        col_meta = self.study.column_metadata.get(col_name, {})
+        current_unit = col_meta.get("unit")
+        
+        # Open edit dialog
+        dialog = EditDataColumnDialog(col_name, current_unit, self)
+        
+        if dialog.exec():
+            new_name, new_unit = dialog.get_values()
+            
+            # Handle rename if needed
+            if new_name != col_name:
+                # Rename column in DataFrame
+                self.study.table.data.rename(columns={col_name: new_name}, inplace=True)
+                
+                # Update metadata
+                self.study.column_metadata[new_name] = self.study.column_metadata.pop(col_name)
+                
+                # Update all formulas that reference this column
+                self.study.formula_engine.rename_variable(col_name, new_name)
+                
+                # Update formulas in metadata
+                for meta in self.study.column_metadata.values():
+                    if "formula" in meta:
+                        formula = meta["formula"]
+                        # Replace {old_name} with {new_name}
+                        meta["formula"] = formula.replace(f"{{{col_name}}}", f"{{{new_name}}}")
+            
+            # Update unit
+            self.study.column_metadata[new_name if new_name != col_name else col_name]["unit"] = new_unit
+            
+            # Refresh table
+            self._refresh_table()
     
     def _edit_calculated_column(self, col_name: str):
         """Edit calculated column properties.
@@ -1096,8 +1051,35 @@ class DataTableWidget(QWidget):
         Args:
             col_name: Column name
         """
-        # Future: Open dialog to edit column properties
-        show_warning(self, "Edit Column", f"Column editing dialog for '{col_name}' coming soon!")
+        # Get available columns and variables
+        available_cols, available_vars = self._get_context(exclude_column=col_name)
+        
+        dialog = AddCalculatedColumnDialog(available_cols, available_vars, self)
+        dialog.setWindowTitle(f"Edit Calculated Column: {col_name}")
+        
+        # Pre-fill with existing values
+        col_meta = self.study.column_metadata.get(col_name, {})
+        dialog.name_edit.setText(col_name)
+        dialog.name_edit.setEnabled(False)  # Can't rename calculated columns easily
+        
+        formula = col_meta.get("formula", "")
+        if formula:
+            dialog.formula_edit.setPlainText(formula)
+        
+        unit = col_meta.get("unit")
+        if unit:
+            dialog.unit_edit.setText(unit)
+        
+        if dialog.exec():
+            _, new_formula, new_unit, _ = dialog.get_values()
+            
+            # Update formula and unit
+            self.study.column_metadata[col_name]["formula"] = new_formula
+            self.study.column_metadata[col_name]["unit"] = new_unit
+            self.study.formula_engine.register_formula(col_name, new_formula)
+            
+            # Recalculate
+            self._refresh_table()
     
     def _edit_derivative_column(self, col_name: str):
         """Edit derivative column properties.
@@ -1105,8 +1087,51 @@ class DataTableWidget(QWidget):
         Args:
             col_name: Column name
         """
-        # Future: Open dialog to edit column properties  
-        show_warning(self, "Edit Column", f"Column editing dialog for '{col_name}' coming soon!")
+        # Get data columns
+        data_cols = [
+            c for c in self.study.table.columns
+            if self.study.get_column_type(c) == ColumnType.DATA
+        ]
+        
+        if len(data_cols) < 2:
+            show_warning(self, "Edit Derivative", "Need at least 2 data columns for derivative")
+            return
+        
+        dialog = AddDerivativeColumnDialog(data_cols, self)
+        dialog.setWindowTitle(f"Edit Derivative Column: {col_name}")
+        
+        # Pre-fill with existing values
+        col_meta = self.study.column_metadata.get(col_name, {})
+        dialog.name_edit.setText(col_name)
+        dialog.name_edit.setEnabled(False)  # Can't rename
+        
+        # Try to set current selections
+        y_col = col_meta.get("y_column")
+        x_col = col_meta.get("x_column")
+        order = col_meta.get("order", 1)
+        unit = col_meta.get("unit")
+        
+        if y_col and y_col in data_cols:
+            dialog.y_combo.setCurrentText(y_col)
+        if x_col and x_col in data_cols:
+            dialog.x_combo.setCurrentText(x_col)
+        dialog.order_spin.setValue(order)
+        if unit:
+            dialog.unit_edit.setText(unit)
+        
+        if dialog.exec():
+            values = dialog.get_values()
+            
+            # Update metadata
+            self.study.column_metadata[col_name].update({
+                "y_column": values["y_column"],
+                "x_column": values["x_column"],
+                "order": values["order"],
+                "unit": values["unit"]
+            })
+            
+            # Recalculate derivative
+            self._refresh_table()
     
     def _edit_range_column(self, col_name: str):
         """Edit range column properties.
@@ -1114,8 +1139,43 @@ class DataTableWidget(QWidget):
         Args:
             col_name: Column name
         """
-        # Future: Open dialog to edit column properties
-        show_warning(self, "Edit Column", f"Column editing dialog for '{col_name}' coming soon!")
+        dialog = AddRangeColumnDialog(self)
+        dialog.setWindowTitle(f"Edit Range Column: {col_name}")
+        
+        # Pre-fill with existing values
+        col_meta = self.study.column_metadata.get(col_name, {})
+        dialog.name_edit.setText(col_name)
+        dialog.name_edit.setEnabled(False)  # Can't rename
+        
+        # Set current range type and parameters
+        range_type = col_meta.get("range_type", "linspace")
+        if range_type == "linspace":
+            dialog.type_combo.setCurrentIndex(0)
+        elif range_type == "arange":
+            dialog.type_combo.setCurrentIndex(1)
+        elif range_type == "logspace":
+            dialog.type_combo.setCurrentIndex(2)
+        
+        dialog.start_spin.setValue(col_meta.get("start", 0))
+        dialog.stop_spin.setValue(col_meta.get("stop", 10))
+        
+        if "count" in col_meta and col_meta["count"]:
+            dialog.count_spin.setValue(col_meta["count"])
+        if "step" in col_meta and col_meta["step"]:
+            dialog.step_spin.setValue(col_meta["step"])
+        
+        unit = col_meta.get("unit")
+        if unit:
+            dialog.unit_edit.setText(unit)
+        
+        if dialog.exec():
+            values = dialog.get_values()
+            
+            # Update metadata
+            self.study.column_metadata[col_name].update(values)
+            
+            # Regenerate range data
+            self._refresh_table()
     
     def _convert_column_to_data(self):
         """Convert selected column to DATA type."""
