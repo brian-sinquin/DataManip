@@ -22,13 +22,13 @@ class TestUncertaintyPropagationBasics:
         """Test that uncertainty column is automatically created."""
         study = DataTableStudy("test")
         study.add_column("x", ColumnType.DATA, initial_data=np.array([1.0, 2.0, 3.0]))
-        study.add_column("x_u", ColumnType.DATA, initial_data=np.array([0.1, 0.1, 0.1]))
+        study.add_column("δx", ColumnType.UNCERTAINTY, uncertainty_reference="x", initial_data=np.array([0.1, 0.1, 0.1]))
         
         study.add_column("y", ColumnType.CALCULATED, formula="{x} * 2", propagate_uncertainty=True)
         
-        # Check that y_u column exists
-        assert "y_u" in study.table.columns
-        assert study.column_metadata["y_u"]["type"] == ColumnType.UNCERTAINTY
+        # Check that δy column exists
+        assert "δy" in study.table.columns
+        assert study.column_metadata["δy"]["type"] == ColumnType.UNCERTAINTY
     
     def test_simple_multiplication_uncertainty(self):
         """Test uncertainty propagation for multiplication: y = x1 * x2."""

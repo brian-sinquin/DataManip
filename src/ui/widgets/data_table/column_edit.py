@@ -122,6 +122,9 @@ def _edit_calculated_column(widget, col_name: str):
         widget.study.column_metadata[col_name]["propagate_uncertainty"] = new_propagate_unc
         widget.study.formula_engine.register_formula(col_name, new_formula)
         
+        # Recalculate column with new formula
+        widget.study._evaluate_column(col_name)
+        
         # Handle uncertainty propagation changes
         if new_propagate_unc and not old_propagate_unc:
             # Enable uncertainty propagation - create uncertainty column if missing
@@ -168,7 +171,7 @@ def _edit_uncertainty_column(widget, col_name: str):
         if widget.study.get_column_type(c) in [ColumnType.DATA, ColumnType.CALCULATED]
     ]
     
-    from ..column_dialogs_consolidated import EditUncertaintyColumnDialog
+    from ..column_dialogs import EditUncertaintyColumnDialog
     dialog = EditUncertaintyColumnDialog(col_name, current_unit, ref_col, available_cols, widget)
     
     if dialog.exec():
@@ -238,7 +241,10 @@ def _edit_derivative_column(widget, col_name: str):
             "unit": unit
         })
         
-        # Recalculate derivative
+        # Recalculate derivative with new parameters
+        widget.study._calculate_derivative(col_name)
+        
+        # Refresh table to show updated data
         widget._refresh_table()
 
 
@@ -285,4 +291,7 @@ def _edit_range_column(widget, col_name: str):
         widget.study.column_metadata[col_name].update(values)
         
         # Regenerate range data
+        widget.study._generate_range(col_name)
+        
+        # Refresh table to show updated data
         widget._refresh_table()

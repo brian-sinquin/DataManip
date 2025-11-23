@@ -312,6 +312,7 @@ class PreferencesDialog(QDialog):
         # Default settings
         defaults = {
             # General
+            "language": "en_US",
             "autosave_enabled": False,
             "autosave_interval": 5,
             "restore_session": True,
@@ -366,7 +367,13 @@ class PreferencesDialog(QDialog):
     
     def _load_values(self):
         """Load current settings into UI controls."""
-        # General
+        # General - Language
+        lang_code = self.settings.get("language", "en_US")
+        index = self.language_combo.findData(lang_code)
+        if index >= 0:
+            self.language_combo.setCurrentIndex(index)
+        
+        # General - Other
         self.autosave_enabled.setChecked(self.settings["autosave_enabled"])
         self.autosave_interval.setValue(self.settings["autosave_interval"])
         self.restore_session.setChecked(self.settings["restore_session"])

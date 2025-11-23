@@ -62,7 +62,9 @@ class PlotStudy(Study):
         style: str = "line",  # "line", "scatter", "both"
         color: Optional[str] = None,
         marker: str = "o",
-        linestyle: str = "-"
+        linestyle: str = "-",
+        xerr_column: Optional[str] = None,
+        yerr_column: Optional[str] = None
     ):
         """Add data series to plot.
         
@@ -75,6 +77,8 @@ class PlotStudy(Study):
             color: Line/marker color
             marker: Marker style
             linestyle: Line style
+            xerr_column: Optional column name for X error bars
+            yerr_column: Optional column name for Y error bars
         """
         series = {
             "study": study_name,
@@ -84,7 +88,9 @@ class PlotStudy(Study):
             "style": style,
             "color": color,
             "marker": marker,
-            "linestyle": linestyle
+            "linestyle": linestyle,
+            "xerr_col": xerr_column,
+            "yerr_col": yerr_column
         }
         self.series.append(series)
     
@@ -108,7 +114,7 @@ class PlotStudy(Study):
             series_index: Index of series
             
         Returns:
-            Tuple of (x_data, y_data, x_label, y_label) or None if not found
+            Tuple of (x_data, y_data, x_label, y_label, x_err, y_err) or None if not found
         """
         if not (0 <= series_index < len(self.series)):
             return None
@@ -133,6 +139,20 @@ class PlotStudy(Study):
             x_data = study.table.get_column(series["x_col"]).values
             y_data = study.table.get_column(series["y_col"]).values
             
+            # Get error data if specified
+            x_err = None
+            y_err = None
+            if series.get("xerr_col"):
+                try:
+                    x_err = study.table.get_column(series["xerr_col"]).values
+                except Exception:
+                    pass
+            if series.get("yerr_col"):
+                try:
+                    y_err = study.table.get_column(series["yerr_col"]).values
+                except Exception:
+                    pass
+            
             # Get units for labels
             x_unit = study.get_column_unit(series["x_col"])
             y_unit = study.get_column_unit(series["y_col"])
@@ -140,7 +160,7 @@ class PlotStudy(Study):
             x_label = f"{series['x_col']}" + (f" [{x_unit}]" if x_unit else "")
             y_label = f"{series['y_col']}" + (f" [{y_unit}]" if y_unit else "")
             
-            return x_data, y_data, x_label, y_label
+            return x_data, y_data, x_label, y_label, x_err, y_err
         except Exception:
             return None
     
@@ -161,7 +181,20 @@ class PlotStudy(Study):
             if not data:
                 continue
             
-            x_data, y_data, x_label, y_label = data
+            x_data, y_data, x_label, y_label, x_err, y_err = data
+            
+            # Convert None values in error arrays to NaN (matplotlib requirement)
+            import numpy as np
+            if x_err is not None:
+                x_err = np.array([np.nan if v is None else v for v in x_err])
+                # If all NaN, treat as no error bars
+                if np.all(np.isnan(x_err)):
+                    x_err = None
+            if y_err is not None:
+                y_err = np.array([np.nan if v is None else v for v in y_err])
+                # If all NaN, treat as no error bars
+                if np.all(np.isnan(y_err)):
+                    y_err = None
             
             # Set default labels if not already set
             if self.xlabel == "X" and x_label:
@@ -174,16 +207,34 @@ class PlotStudy(Study):
             color = series["color"]
             label = series["label"]
             
-            if style == "scatter":
-                ax.scatter(x_data, y_data, label=label, color=color, 
-                          marker=series["marker"], alpha=0.7)
-            elif style == "line":
-                ax.plot(x_data, y_data, label=label, color=color,
-                       linestyle=series["linestyle"])
-            elif style == "both":
-                ax.plot(x_data, y_data, label=label, color=color,
-                       linestyle=series["linestyle"], marker=series["marker"],
-                       markersize=4)
+            # Use errorbar if any error data present
+            has_errors = (x_err is not None) or (y_err is not None)
+            
+            if has_errors:
+                # errorbar can handle all styles
+                fmt = ""
+                if style == "scatter":
+                    fmt = series["marker"]  # Just marker
+                elif style == "line":
+                    fmt = series["linestyle"]  # Just line
+                elif style == "both":
+                    fmt = series["linestyle"] + series["marker"]  # Line + marker
+                
+                ax.errorbar(x_data, y_data, xerr=x_err, yerr=y_err,
+                           fmt=fmt, label=label, color=color,
+                           capsize=3, capthick=1, elinewidth=1, alpha=0.8)
+            else:
+                # No errors - use standard plotting
+                if style == "scatter":
+                    ax.scatter(x_data, y_data, label=label, color=color, 
+                              marker=series["marker"], alpha=0.7)
+                elif style == "line":
+                    ax.plot(x_data, y_data, label=label, color=color,
+                           linestyle=series["linestyle"])
+                elif style == "both":
+                    ax.plot(x_data, y_data, label=label, color=color,
+                           linestyle=series["linestyle"], marker=series["marker"],
+                           markersize=4)
         
         # Configure plot
         ax.set_xlabel(self.xlabel)

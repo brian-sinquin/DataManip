@@ -83,11 +83,13 @@ class TestPlotStudy:
         data = plot.get_data_for_series(0)
         assert data is not None
         
-        x_data, y_data, x_label, y_label = data
+        x_data, y_data, x_label, y_label, x_err, y_err = data
         assert len(x_data) == 11
         assert len(y_data) == 11
         assert x_label == "x [m]"
         assert y_label == "y [m]"
+        assert x_err is None
+        assert y_err is None
     
     def test_remove_series(self):
         """Test removing series."""

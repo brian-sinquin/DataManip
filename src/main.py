@@ -3,6 +3,8 @@ DataManip main entry point.
 """
 
 import sys
+import json
+from pathlib import Path
 from PySide6.QtWidgets import QApplication
 from ui.main_window import MainWindow
 from utils.lang import init_language
@@ -10,8 +12,20 @@ from utils.lang import init_language
 
 def main():
     """Main entry point."""
-    # Initialize language system (will auto-load from config later)
-    init_language("en_US")
+    # Load language from preferences
+    settings_file = Path.home() / ".datamanip" / "preferences.json"
+    language = "en_US"  # Default
+    
+    if settings_file.exists():
+        try:
+            with open(settings_file, 'r') as f:
+                settings = json.load(f)
+                language = settings.get("language", "en_US")
+        except Exception:
+            pass  # Use default if loading fails
+    
+    # Initialize language system
+    init_language(language)
     
     app = QApplication(sys.argv)
     app.setApplicationName("DataManip")

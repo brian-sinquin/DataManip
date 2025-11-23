@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
+from constants import PLOT_DPI_OPTIONS
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT
 from matplotlib.figure import Figure
@@ -213,6 +214,12 @@ class AddSeriesDialog(QDialog):
         self.x_combo = QComboBox()
         self.y_combo = QComboBox()
         
+        # Error bar column selectors (optional)
+        self.xerr_combo = QComboBox()
+        self.yerr_combo = QComboBox()
+        self.xerr_combo.addItem("(None)")  # Default no error bars
+        self.yerr_combo.addItem("(None)")
+        
         # Label
         self.label_edit = QLineEdit()
         
@@ -236,6 +243,8 @@ class AddSeriesDialog(QDialog):
         layout.addRow("Study:", self.study_combo)
         layout.addRow("X Column:", self.x_combo)
         layout.addRow("Y Column:", self.y_combo)
+        layout.addRow("X Error (optional):", self.xerr_combo)
+        layout.addRow("Y Error (optional):", self.yerr_combo)
         layout.addRow("Label:", self.label_edit)
         layout.addRow("Style:", self.style_combo)
         layout.addRow("Color:", self.color_edit)
@@ -259,6 +268,12 @@ class AddSeriesDialog(QDialog):
         """Update column lists when study selection changes."""
         self.x_combo.clear()
         self.y_combo.clear()
+        self.xerr_combo.clear()
+        self.yerr_combo.clear()
+        
+        # Add "(None)" option for error columns
+        self.xerr_combo.addItem("(None)")
+        self.yerr_combo.addItem("(None)")
         
         study = self.workspace.get_study(study_name)
         if study:
@@ -267,6 +282,9 @@ class AddSeriesDialog(QDialog):
                 columns = study.table.columns
                 self.x_combo.addItems(columns)
                 self.y_combo.addItems(columns)
+                # Error columns can be any column (typically uncertainty type)
+                self.xerr_combo.addItems(columns)
+                self.yerr_combo.addItems(columns)
     
     def get_values(self) -> dict:
         """Get dialog values.
@@ -275,6 +293,15 @@ class AddSeriesDialog(QDialog):
             Dictionary with series configuration
         """
         color = self.color_edit.text().strip() or None
+        
+        # Get error columns (None if "(None)" selected)
+        xerr_col = self.xerr_combo.currentText()
+        if xerr_col == "(None)":
+            xerr_col = None
+        yerr_col = self.yerr_combo.currentText()
+        if yerr_col == "(None)":
+            yerr_col = None
+        
         return {
             "study_name": self.study_combo.currentText(),
             "x_column": self.x_combo.currentText(),
@@ -283,7 +310,9 @@ class AddSeriesDialog(QDialog):
             "style": self.style_combo.currentText(),
             "color": color,
             "marker": self.marker_combo.currentText(),
-            "linestyle": self.linestyle_combo.currentText()
+            "linestyle": self.linestyle_combo.currentText(),
+            "xerr_column": xerr_col,
+            "yerr_column": yerr_col
         }
 
 

@@ -1,0 +1,222 @@
+{
+  "name": "06 - Calculated Constants",
+  "workspace_type": "numerical",
+  "studies": {
+    "Ideal Gas Behavior": {
+      "type": "data_table",
+      "data": {
+        "name": "Ideal Gas Behavior",
+        "type": "data_table",
+        "data_objects": {
+          "main_table": {
+            "name": "main_table",
+            "data": {
+              "T": [
+                273.15,
+                298.15,
+                323.15,
+                348.15,
+                373.15,
+                398.15,
+                423.15,
+                448.15,
+                473.15
+              ],
+              "P": [
+                101325.0,
+                110598.75068643602,
+                119872.50137287205,
+                129146.25205930807,
+                138420.00274574407,
+                147693.75343218012,
+                156967.50411861614,
+                166241.25480505216,
+                175515.0054914882
+              ],
+              "V": [
+                0.022413969544601037,
+                0.02446540369658722,
+                0.0265168378485734,
+                0.028568272000559586,
+                0.030619706152545768,
+                0.03267114030453195,
+                0.034722574456518135,
+                0.03677400860850432,
+                0.0388254427604905
+              ],
+              "n": [
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            "metadata": {}
+          }
+        },
+        "metadata": {},
+        "column_metadata": {
+          "T": {
+            "type": "range",
+            "formula": null,
+            "unit": "K",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": "linspace",
+            "range_start": 273.15,
+            "range_stop": 473.15,
+            "range_count": 9,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "P": {
+            "type": "calculated",
+            "formula": "n * R * {T} / V0",
+            "unit": "Pa",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "V": {
+            "type": "calculated",
+            "formula": "n * R * {T} / P0",
+            "unit": "m\u00b3",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "n": {
+            "type": "calculated",
+            "formula": "P0 * V0 / (R * T0)",
+            "unit": "mol",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          }
+        }
+      }
+    },
+    "Pressure vs Temperature": {
+      "type": "plot",
+      "data": {
+        "name": "Pressure vs Temperature",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "Gay-Lussac's Law (P \u221d T at constant V)",
+        "xlabel": "T (K)",
+        "ylabel": "P (Pa)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Ideal Gas Behavior",
+            "x_col": "T",
+            "y_col": "P",
+            "label": "Constant Volume",
+            "style": "line",
+            "color": "#e74c3c",
+            "marker": "o",
+            "linestyle": "-",
+            "xerr_col": null,
+            "yerr_col": null
+          }
+        ]
+      }
+    },
+    "Volume vs Temperature": {
+      "type": "plot",
+      "data": {
+        "name": "Volume vs Temperature",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "Charles's Law (V \u221d T at constant P)",
+        "xlabel": "T (K)",
+        "ylabel": "V (m\u00b3)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Ideal Gas Behavior",
+            "x_col": "T",
+            "y_col": "V",
+            "label": "Constant Pressure",
+            "style": "line",
+            "color": "#3498db",
+            "marker": "s",
+            "linestyle": "-",
+            "xerr_col": null,
+            "yerr_col": null
+          }
+        ]
+      }
+    }
+  },
+  "constants": {
+    "R": {
+      "type": "constant",
+      "value": 8.314462618,
+      "unit": "J/(mol\u00b7K)"
+    },
+    "T0": {
+      "type": "constant",
+      "value": 273.15,
+      "unit": "K"
+    },
+    "P0": {
+      "type": "constant",
+      "value": 101325.0,
+      "unit": "Pa"
+    },
+    "V0": {
+      "type": "calculated",
+      "formula": "R * T0 / P0",
+      "unit": "m\u00b3",
+      "value": null
+    },
+    "n": {
+      "type": "calculated",
+      "formula": "P0 * V0 / (R * T0)",
+      "unit": "mol",
+      "value": null
+    }
+  },
+  "metadata": {
+    "description": "Calculated constants for ideal gas law (PV = nRT): V0 and n computed from other constants",
+    "version": "0.2.0",
+    "created": "2025-11-23"
+  }
+}

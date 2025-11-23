@@ -179,7 +179,7 @@ class DataTableStudy(Study):
             range_stop: Stop value (RANGE type)
             range_count: Number of points (linspace, logspace)
             range_step: Step size (arange)
-            propagate_uncertainty: Auto-calculate uncertainty (CALCULATED type)
+            propagate_uncertainty: Auto-calculate uncertainty (CALCULATED/DERIVATIVE type)
             uncertainty_reference: Parent column name (UNCERTAINTY type)
         """
         # Check if undo tracking is enabled BEFORE disabling
@@ -214,6 +214,13 @@ class DataTableStudy(Study):
                 "uncertainty_reference": uncertainty_reference
             }
             
+            # Auto-inherit unit for uncertainty columns
+            if column_type == ColumnType.UNCERTAINTY and uncertainty_reference:
+                if uncertainty_reference in self.column_metadata:
+                    parent_unit = self.column_metadata[uncertainty_reference].get("unit")
+                    if parent_unit and not unit:
+                        self.column_metadata[name]["unit"] = parent_unit
+            
             # Handle by type
             if column_type == ColumnType.CALCULATED and formula:
                 self.formula_engine.register_formula(name, formula)
@@ -223,6 +230,30 @@ class DataTableStudy(Study):
                         self._recalculate_column(name)
                     else:
                         # Mark dirty if not auto-recalculating (batch mode)
+                        self.mark_dirty(name)
+                
+                # Auto-create uncertainty column if propagate_uncertainty is True
+                if propagate_uncertainty:
+                    uncertainty_col_name = f"δ{name}"
+                    # Only create if it doesn't already exist
+                    if uncertainty_col_name not in self.table.data.columns:
+                        # Recursively call add_column for uncertainty column
+                        # Temporarily disable undo to avoid nested tracking
+                        undo_was_enabled = self.undo_manager.is_enabled()
+                        self.undo_manager.set_enabled(False)
+                        try:
+                            self.add_column(
+                                uncertainty_col_name,
+                                column_type=ColumnType.UNCERTAINTY,
+                                uncertainty_reference=name
+                            )
+                            # Link uncertainty column to parent
+                            self.column_metadata[name]["uncertainty"] = uncertainty_col_name
+                            # Calculate initial uncertainty
+                            if len(self.table.data) > 0:
+                                self._recalculate_uncertainty(name)
+                        finally:
+                            self.undo_manager.set_enabled(undo_was_enabled)
                         self.mark_dirty(name)
                 
                 # Auto-create uncertainty column if requested
@@ -547,6 +578,64 @@ class DataTableStudy(Study):
         # Store result
         self.table.set_column(name, pd.Series(deriv))
     
+    def _calculate_derivative_uncertainty(self, name: str):
+        """Calculate uncertainty for a derivative column.
+        
+        For first-order derivative dy/dx, the uncertainty is propagated using:
+        δ(dy/dx) ≈ δy / Δx  (when δx << Δx)
+        
+        For higher orders, uncertainty grows with each differentiation step.
+        
+        Args:
+            name: Derivative column name
+        """
+        meta = self.column_metadata[name]
+        y_col = meta.get("derivative_of")
+        x_col = meta.get("with_respect_to")
+        order = meta.get("order", 1)
+        
+        if not y_col or not x_col:
+            return pd.Series([np.nan] * len(self.table.data))
+        
+        # Check if y has an uncertainty column
+        y_uncert_col = None
+        for col_name, col_meta in self.column_metadata.items():
+            if col_meta.get("uncertainty_reference") == y_col:
+                y_uncert_col = col_name
+                break
+        
+        # Also check for δ or d prefix patterns
+        if not y_uncert_col:
+            if f"\u03b4{y_col}" in self.table.columns:
+                y_uncert_col = f"\u03b4{y_col}"
+            elif f"d{y_col}" in self.table.columns:
+                y_uncert_col = f"d{y_col}"
+            elif f"{y_col}_u" in self.table.columns:
+                y_uncert_col = f"{y_col}_u"
+        
+        # If no uncertainty for y, return zeros
+        if not y_uncert_col or y_uncert_col not in self.table.columns:
+            return pd.Series([0.0] * len(self.table.data))
+        
+        # Get uncertainties
+        delta_y = self.table.get_column(y_uncert_col).values
+        x = self.table.get_column(x_col).values
+        
+        # Calculate spacing (Δx)
+        dx = np.diff(x)
+        # Handle edge cases by padding
+        dx = np.concatenate([dx, [dx[-1]]])
+        
+        # First order derivative uncertainty: δ(dy/dx) ≈ δy / Δx
+        deriv_uncert = delta_y / np.abs(dx)
+        
+        # For higher order derivatives, uncertainty grows
+        # Each additional derivative divides by Δx again
+        for _ in range(1, order):
+            deriv_uncert = deriv_uncert / np.abs(dx)
+        
+        return pd.Series(deriv_uncert)
+    
     def _calculate_propagated_uncertainty(self, name: str) -> pd.Series:
         """Calculate propagated uncertainty for a calculated column.
         
@@ -571,6 +660,46 @@ class DataTableStudy(Study):
         
         # Collect values and uncertainties for each dependency
         values = {}
+    def _recalculate_uncertainty(self, column_name: str):
+        """Recalculate uncertainty for a column using propagation.
+        
+        Args:
+            column_name: Name of the parent column (not the uncertainty column)
+        """
+        # Find the uncertainty column for this parent
+        uncertainty_col = None
+        for col_name, col_meta in self.column_metadata.items():
+            if col_meta.get("uncertainty_reference") == column_name:
+                uncertainty_col = col_name
+                break
+        
+        # If no linked uncertainty column, nothing to do
+        if not uncertainty_col or uncertainty_col not in self.table.data.columns:
+            return
+        
+        # Get parent column metadata
+        meta = self.column_metadata.get(column_name, {})
+        col_type = meta.get("type")
+        
+        # Handle derivative columns differently
+        if col_type == ColumnType.DERIVATIVE:
+            try:
+                propagated = self._calculate_derivative_uncertainty(column_name)
+                self.table.set_column(uncertainty_col, propagated)
+            except Exception:
+                # If propagation fails, fill with NaN
+                self.table.set_column(uncertainty_col, pd.Series([np.nan] * len(self.table.data)))
+            return
+        
+        # Handle calculated columns
+        formula = meta.get("formula")
+        if not formula:
+            return
+        
+        dependencies = self.formula_engine.extract_dependencies(formula)
+        
+        # Build values and uncertainties for propagation
+        values = {}
         uncertainties = {}
         
         for dep in dependencies:
@@ -579,9 +708,20 @@ class DataTableStudy(Study):
             
             values[dep] = self.table.get_column(dep)
             
-            # Check if uncertainty column exists, use 0 if not
-            uncert_col_name = f"{dep}_u"
-            if uncert_col_name in self.table.columns:
+            # Check if uncertainty column exists (try multiple patterns)
+            uncert_col_name = None
+            
+            # Try δ prefix (e.g., δI)
+            if f"\u03b4{dep}" in self.table.columns:
+                uncert_col_name = f"\u03b4{dep}"
+            # Try d prefix (e.g., dI)
+            elif f"d{dep}" in self.table.columns:
+                uncert_col_name = f"d{dep}"
+            # Try _u suffix (e.g., I_u)
+            elif f"{dep}_u" in self.table.columns:
+                uncert_col_name = f"{dep}_u"
+            
+            if uncert_col_name:
                 uncertainties[dep] = self.table.get_column(uncert_col_name)
             else:
                 uncertainties[dep] = pd.Series([0.0] * len(self.table.data))
@@ -589,14 +729,19 @@ class DataTableStudy(Study):
         # Use extracted uncertainty propagator
         workspace_constants = self.workspace.constants if self.workspace else {}
         
-        return UncertaintyPropagator.calculate_propagated_uncertainty(
-            formula=formula,
-            dependencies=dependencies,
-            values=values,
-            uncertainties=uncertainties,
-            workspace_constants=workspace_constants,
-            math_functions=self.formula_engine._math_functions
-        )
+        try:
+            propagated = UncertaintyPropagator.calculate_propagated_uncertainty(
+                formula=formula,
+                dependencies=dependencies,
+                values=values,
+                uncertainties=uncertainties,
+                workspace_constants=workspace_constants,
+                math_functions=self.formula_engine._math_functions
+            )
+            self.table.set_column(uncertainty_col, propagated)
+        except Exception:
+            # If propagation fails, fill with NaN
+            self.table.set_column(uncertainty_col, pd.Series([np.nan] * len(self.table.data)))
     
     def _recalculate_column(self, name: str, context: Optional[Dict[str, Any]] = None):
         """Recalculate a formula column.
@@ -657,8 +802,10 @@ class DataTableStudy(Study):
         # Mark as clean after successful calculation
         self.mark_clean(name)
         
-        # Mark as clean after successful calculation
-        self.mark_clean(name)
+        # Automatically recalculate associated uncertainty column if it exists
+        uncertainty_col = self.column_metadata.get(name, {}).get("uncertainty")
+        if uncertainty_col and uncertainty_col in self.table.data.columns:
+            self._recalculate_uncertainty(name)
     
     def _recalculate_dirty_columns(self):
         """Recalculate only dirty columns, parallelizing independent ones."""
@@ -897,10 +1044,40 @@ class DataTableStudy(Study):
         
         # Variables are managed at workspace level (not restored here)
         
-        # Rebuild formula engine
+        # Rebuild formula engine and register formulas
         for col_name, meta in study.column_metadata.items():
             if meta.get("type") == ColumnType.CALCULATED and meta.get("formula"):
                 study.formula_engine.register_formula(col_name, meta["formula"])
+        
+        # Recalculate all computed columns to ensure fresh data
+        # (calculated columns, derivatives, uncertainties)
+        for col_name, meta in study.column_metadata.items():
+            col_type = meta.get("type")
+            
+            # Recalculate calculated columns
+            if col_type == ColumnType.CALCULATED and meta.get("formula"):
+                try:
+                    study._recalculate_column(col_name)
+                except Exception:
+                    # If calculation fails on load, leave as-is
+                    pass
+            
+            # Recalculate derivatives
+            elif col_type == ColumnType.DERIVATIVE:
+                try:
+                    study._recalculate_column(col_name)
+                except Exception:
+                    pass
+        
+        # Recalculate uncertainty columns (must be done after calculated/derivative columns)
+        for col_name, meta in study.column_metadata.items():
+            if meta.get("type") == ColumnType.UNCERTAINTY:
+                parent_col = meta.get("uncertainty_reference")
+                if parent_col and parent_col in study.column_metadata:
+                    try:
+                        study._recalculate_uncertainty(parent_col)
+                    except Exception:
+                        pass
         
         return study
     

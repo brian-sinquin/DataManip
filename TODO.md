@@ -11,6 +11,15 @@
 
 ## Recent Achievements (November 23, 2025) ✅
 
+### Example Generation Script ✅ COMPLETE (Nov 23)
+- **generate_examples.py** - Programmatic example creation using DataManip API
+- **7 Examples Generated** - All 7 .dmw files created and verified
+- **Integrity Verification** - Each example saved → loaded → compared
+- **API Documentation** - Script serves as usage reference
+- **Consistent Format** - All examples use correct constant types and API calls
+- **Single Source of Truth** - No manual .dmw editing required
+- **README Updated** - Examples/README.md documents generation process
+
 ### UI Polish & Code Quality ✅ COMPLETE (Nov 23)
 - **Display Precision Constant** - DISPLAY_PRECISION = 33 significant digits for cell display
 - **Precision Preservation** - EditRole returns full precision, DisplayRole shows formatted
@@ -226,6 +235,15 @@ src/ui/widgets/
 - ⏸️ Preferences Window (Phase 2C)
 - ⏸️ Undo/Redo (Phase 3)
 - ⏸️ Interpolation columns (Phase 3)
+
+### Future Enhancements
+- [ ] **Column ID/Alias System** (~4 hours)
+  - [ ] Add `column_id` metadata field (short, calculation-friendly identifier)
+  - [ ] FormulaEngine uses IDs for calculations (e.g., `{t}` instead of `{Time (s)}`)
+  - [ ] UI displays full descriptive names (e.g., "Time (s)")
+  - [ ] Auto-generate IDs from names (lowercase, remove spaces/units)
+  - [ ] Manual ID override in column metadata
+  - [ ] Backward compatibility: Fall back to full names if no ID
 
 ---
 

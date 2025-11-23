@@ -1,0 +1,346 @@
+{
+  "name": "05 - Custom Functions",
+  "workspace_type": "numerical",
+  "studies": {
+    "Signal Analysis": {
+      "type": "data_table",
+      "data": {
+        "name": "Signal Analysis",
+        "type": "data_table",
+        "data_objects": {
+          "main_table": {
+            "name": "main_table",
+            "data": {
+              "t": [
+                0.0,
+                0.1,
+                0.2,
+                0.30000000000000004,
+                0.4,
+                0.5,
+                0.6000000000000001,
+                0.7000000000000001,
+                0.8,
+                0.9,
+                1.0,
+                1.1,
+                1.2000000000000002,
+                1.3,
+                1.4000000000000001,
+                1.5,
+                1.6,
+                1.7000000000000002,
+                1.8,
+                1.9000000000000001,
+                2.0
+              ],
+              "s1": [
+                0.0,
+                0.8090169943749475,
+                0.9510565162951536,
+                0.3090169943749471,
+                -0.587785252292473,
+                -1.0,
+                -0.5877852522924726,
+                0.309016994374948,
+                0.9510565162951535,
+                0.8090169943749476,
+                3.6739403974420594e-16,
+                -0.8090169943749472,
+                -0.9510565162951532,
+                -0.3090169943749479,
+                0.5877852522924741,
+                1.0,
+                0.5877852522924736,
+                -0.3090169943749485,
+                -0.9510565162951534,
+                -0.8090169943749468,
+                -7.347880794884119e-16
+              ],
+              "s2": [
+                0.7071067811865476,
+                0.9510565162951535,
+                0.9876883405951378,
+                0.8090169943749475,
+                0.45399049973954686,
+                1.2246467991473532e-16,
+                -0.4539904997395471,
+                -0.8090169943749473,
+                -0.9876883405951377,
+                -0.9510565162951536,
+                -0.7071067811865477,
+                -0.3090169943749477,
+                0.1564344650402315,
+                0.5877852522924729,
+                0.8910065241883681,
+                1.0,
+                0.8910065241883676,
+                0.5877852522924734,
+                0.1564344650402321,
+                -0.30901699437494873,
+                -0.7071067811865479
+              ],
+              "sc": [
+                0.7071067811865476,
+                1.760073510670101,
+                1.9387448568902914,
+                1.1180339887498945,
+                -0.13379475255292617,
+                -0.9999999999999999,
+                -1.0417757520320197,
+                -0.49999999999999933,
+                -0.03663182429998413,
+                -0.14203952192020608,
+                -0.7071067811865474,
+                -1.118033988749895,
+                -0.7946220512549217,
+                0.278768257917525,
+                1.4787917764808423,
+                2.0,
+                1.4787917764808411,
+                0.27876825791752485,
+                -0.7946220512549214,
+                -1.1180339887498956,
+                -0.7071067811865487
+              ],
+              "rms": [
+                0.5,
+                0.8828977841106375,
+                0.9695454489953141,
+                0.6123724356957945,
+                0.5251661054686839,
+                0.7071067811865476,
+                0.5251661054686838,
+                0.6123724356957946,
+                0.969545448995314,
+                0.8828977841106376,
+                0.5000000000000001,
+                0.6123724356957945,
+                0.6815351197993748,
+                0.4695652274312125,
+                0.7547794806957739,
+                1.0,
+                0.7547794806957735,
+                0.46956522743121293,
+                0.6815351197993751,
+                0.6123724356957945,
+                0.5000000000000002
+              ]
+            },
+            "metadata": {}
+          }
+        },
+        "metadata": {},
+        "column_metadata": {
+          "t": {
+            "type": "range",
+            "formula": null,
+            "unit": "s",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": "linspace",
+            "range_start": 0.0,
+            "range_stop": 2.0,
+            "range_count": 21,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "s1": {
+            "type": "calculated",
+            "formula": "sine_wave({t}, f1, A1, 0)",
+            "unit": "V",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "s2": {
+            "type": "calculated",
+            "formula": "sine_wave({t}, f2, A2, np.pi/4)",
+            "unit": "V",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "sc": {
+            "type": "calculated",
+            "formula": "{s1} + {s2}",
+            "unit": "V",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "rms": {
+            "type": "calculated",
+            "formula": "rms({s1}, {s2})",
+            "unit": "V",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          }
+        }
+      }
+    },
+    "Waveforms": {
+      "type": "plot",
+      "data": {
+        "name": "Waveforms",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "Signal Waveforms",
+        "xlabel": "t (s)",
+        "ylabel": "Voltage (V)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Signal Analysis",
+            "x_col": "t",
+            "y_col": "s1",
+            "label": "Signal 1 (5 Hz)",
+            "style": "line",
+            "color": "#e74c3c",
+            "marker": "o",
+            "linestyle": "-",
+            "xerr_col": null,
+            "yerr_col": null
+          },
+          {
+            "study": "Signal Analysis",
+            "x_col": "t",
+            "y_col": "s2",
+            "label": "Signal 2 (2.5 Hz)",
+            "style": "line",
+            "color": "#3498db",
+            "marker": "o",
+            "linestyle": "-",
+            "xerr_col": null,
+            "yerr_col": null
+          },
+          {
+            "study": "Signal Analysis",
+            "x_col": "t",
+            "y_col": "sc",
+            "label": "Combined",
+            "style": "line",
+            "color": "#2ecc71",
+            "marker": "o",
+            "linestyle": "--",
+            "xerr_col": null,
+            "yerr_col": null
+          }
+        ]
+      }
+    },
+    "RMS Analysis": {
+      "type": "plot",
+      "data": {
+        "name": "RMS Analysis",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "RMS Value Over Time",
+        "xlabel": "t (s)",
+        "ylabel": "RMS (V)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Signal Analysis",
+            "x_col": "t",
+            "y_col": "rms",
+            "label": "RMS",
+            "style": "line",
+            "color": "#f39c12",
+            "marker": "o",
+            "linestyle": "-",
+            "xerr_col": null,
+            "yerr_col": null
+          }
+        ]
+      }
+    }
+  },
+  "constants": {
+    "f1": {
+      "type": "constant",
+      "value": 1.5,
+      "unit": "Hz"
+    },
+    "f2": {
+      "type": "constant",
+      "value": 0.75,
+      "unit": "Hz"
+    },
+    "A1": {
+      "type": "constant",
+      "value": 1.0,
+      "unit": "V"
+    },
+    "A2": {
+      "type": "constant",
+      "value": 1.0,
+      "unit": "V"
+    },
+    "sine_wave": {
+      "type": "function",
+      "formula": "A * np.sin(2 * np.pi * f * t + phase)",
+      "parameters": [
+        "t",
+        "f",
+        "A",
+        "phase"
+      ],
+      "unit": "V"
+    },
+    "rms": {
+      "type": "function",
+      "formula": "np.sqrt((v1**2 + v2**2) / 2)",
+      "parameters": [
+        "v1",
+        "v2"
+      ],
+      "unit": "V"
+    }
+  },
+  "metadata": {
+    "description": "User-defined functions for signal processing (1.5 Hz and 0.75 Hz sine waves)",
+    "version": "0.2.0",
+    "created": "2025-11-23"
+  }
+}

@@ -56,12 +56,9 @@ class MainWindow(QMainWindow):
         # Initialize notification manager after UI is ready
         self.notifications = NotificationManager(self)
         
-        # Create default study
-        self._create_default_study()
-        
         # Welcome message
         self.statusBar().showMessage("Welcome to DataManip! Press Ctrl+T for new table, Ctrl+P for new plot, F1 for help")
-        self.notifications.show_info("Welcome to DataManip! Press F1 for keyboard shortcuts")
+        self.notifications.show_info("Welcome to DataManip! Create a new table or open an example to get started")
 
     
     def _setup_ui(self):
@@ -182,6 +179,14 @@ class MainWindow(QMainWindow):
         # View menu
         view_menu = menubar.addMenu("&View")
         
+        constants_action = QAction("Constants && &Functions", self)
+        constants_action.setShortcut("Ctrl+K")
+        constants_action.setToolTip("Open Constants & Functions panel")
+        constants_action.triggered.connect(self._open_constants_tab)
+        view_menu.addAction(constants_action)
+        
+        view_menu.addSeparator()
+        
         next_tab_action = QAction("Next Tab", self)
         next_tab_action.setShortcut("Ctrl+Tab")
         next_tab_action.triggered.connect(self._next_tab)
@@ -195,25 +200,42 @@ class MainWindow(QMainWindow):
         # Examples menu
         examples_menu = menubar.addMenu("E&xamples")
         
-        projectile_action = QAction("Projectile Motion", self)
-        projectile_action.setToolTip("Baseball trajectory with uncertainty")
-        projectile_action.triggered.connect(lambda: self._load_example("projectile_motion"))
-        examples_menu.addAction(projectile_action)
+        example_01 = QAction("01 - Basic Introduction", self)
+        example_01.setToolTip("Simple data entry and plotting")
+        example_01.triggered.connect(lambda: self._load_example_workspace("01_basic_introduction.dmw"))
+        examples_menu.addAction(example_01)
         
-        freefall_action = QAction("Free Fall Motion", self)
-        freefall_action.setToolTip("Simple free fall with drag")
-        freefall_action.triggered.connect(lambda: self._load_example("freefall"))
-        examples_menu.addAction(freefall_action)
+        example_02 = QAction("02 - Constants and Formulas", self)
+        example_02.setToolTip("Using constants (π) and calculated columns")
+        example_02.triggered.connect(lambda: self._load_example_workspace("02_constants_and_formulas.dmw"))
+        examples_menu.addAction(example_02)
         
-        oscillator_action = QAction("Harmonic Oscillator", self)
-        oscillator_action.setToolTip("Damped spring oscillation")
-        oscillator_action.triggered.connect(lambda: self._load_example("oscillator"))
-        examples_menu.addAction(oscillator_action)
+        example_03 = QAction("03 - Ranges and Derivatives", self)
+        example_03.setToolTip("Range generation and numerical derivatives")
+        example_03.triggered.connect(lambda: self._load_example_workspace("03_ranges_and_derivatives.dmw"))
+        examples_menu.addAction(example_03)
         
-        derivatives_action = QAction("Derivatives Demo", self)
-        derivatives_action.setToolTip("Position → velocity → acceleration")
-        derivatives_action.triggered.connect(lambda: self._load_example("derivatives"))
-        examples_menu.addAction(derivatives_action)
+        example_04 = QAction("04 - Uncertainty Propagation", self)
+        example_04.setToolTip("Automatic uncertainty propagation with error bars")
+        example_04.triggered.connect(lambda: self._load_example_workspace("04_uncertainty_propagation.dmw"))
+        examples_menu.addAction(example_04)
+        
+        example_05 = QAction("05 - Custom Functions", self)
+        example_05.setToolTip("User-defined functions for signal processing")
+        example_05.triggered.connect(lambda: self._load_example_workspace("05_custom_functions.dmw"))
+        examples_menu.addAction(example_05)
+        
+        example_06 = QAction("06 - Calculated Constants", self)
+        example_06.setToolTip("Calculated constants and dependencies")
+        example_06.triggered.connect(lambda: self._load_example_workspace("06_calculated_constants.dmw"))
+        examples_menu.addAction(example_06)
+        
+        examples_menu.addSeparator()
+        
+        example_07 = QAction("07 - Advanced Kinematics ⭐", self)
+        example_07.setToolTip("Master example: All features combined in 2D projectile motion")
+        example_07.triggered.connect(lambda: self._load_example_workspace("07_advanced_kinematics.dmw"))
+        examples_menu.addAction(example_07)
         
         # Tools menu
         tools_menu = menubar.addMenu("&Tools")
@@ -500,7 +522,14 @@ class MainWindow(QMainWindow):
                 self.study_tabs.setCurrentIndex(self.study_tabs.count() - 1)
     
     def _new_variables_tab(self):
-        """Create new Variables tab."""
+        """Create new Variables tab (only if one doesn't already exist)."""
+        # Check if Constants & Functions tab already exists
+        for i in range(self.study_tabs.count()):
+            if "Constants" in self.study_tabs.tabText(i) and "Functions" in self.study_tabs.tabText(i):
+                # Tab already exists, don't create another one
+                return
+        
+        # Tab doesn't exist, create it
         vars_widget = ConstantsWidget(self.workspace, self)
         
         # Connect signal to update all studies
@@ -510,6 +539,20 @@ class MainWindow(QMainWindow):
         tab_index = self.study_tabs.addTab(vars_widget, "Constants & Functions")
         self.study_tabs.tabBar().setTabButton(tab_index, QTabBar.ButtonPosition.RightSide, None)
         self.study_tabs.tabBar().setTabButton(tab_index, QTabBar.ButtonPosition.LeftSide, None)
+    
+    def _open_constants_tab(self):
+        """Open or switch to Constants & Functions tab."""
+        # Check if Constants & Functions tab already exists
+        for i in range(self.study_tabs.count()):
+            if "Constants" in self.study_tabs.tabText(i) and "Functions" in self.study_tabs.tabText(i):
+                # Tab exists, switch to it
+                self.study_tabs.setCurrentIndex(i)
+                return
+        
+        # Tab doesn't exist, create it
+        self._new_variables_tab()
+        # Switch to the newly created tab
+        self.study_tabs.setCurrentIndex(self.study_tabs.count() - 1)
     
     def _on_variables_changed(self):
         """Handle variables changed signal."""
@@ -747,187 +790,66 @@ class MainWindow(QMainWindow):
             prev_index = (current - 1) % self.study_tabs.count()
             self.study_tabs.setCurrentIndex(prev_index)
     
-    def _load_example(self, example_name: str):
-        """Load example dataset into a new data table.
+    def _load_example_workspace(self, filename: str):
+        """Load example workspace from examples directory.
         
         Args:
-            example_name: Name of example to load
+            filename: Name of the example workspace file (e.g., "01_basic_introduction.dmw")
         """
-        # Close welcome tab if present
-        for i in range(self.study_tabs.count()):
-            if self.study_tabs.tabText(i) == "Physics Demo":
-                self._close_study(i)
-                break
+        # Get path to examples directory
+        examples_dir = Path(__file__).parent.parent.parent / "examples"
+        filepath = examples_dir / filename
         
-        # Create study based on example type
-        if example_name == "projectile_motion":
-            self._load_projectile_motion_example()
-        elif example_name == "freefall":
-            self._load_freefall_example()
-        elif example_name == "oscillator":
-            self._load_oscillator_example()
-        elif example_name == "derivatives":
-            self._load_derivatives_example()
-    
-    def _load_projectile_motion_example(self):
-        """Load projectile motion example - Baseball trajectory."""
-        study = DataTableStudy("Projectile Motion", workspace=self.workspace)
+        if not filepath.exists():
+            QMessageBox.warning(
+                self,
+                "Example Not Found",
+                f"Example file not found: {filename}\n\nPath: {filepath}"
+            )
+            return
         
-        # Physical constants
-        self.workspace.add_constant("g", 9.80665, "m/s^2")
-        self.workspace.add_constant("v0", 45.0, "m/s")
-        self.workspace.add_constant("theta", 35.0, "deg")
-        
-        import math
-        theta_rad = 35.0 * math.pi / 180.0
-        v0y = 45.0 * math.sin(theta_rad)
-        t_max = 2 * v0y / 9.80665
-        
-        # Time column
-        study.add_column("t", ColumnType.RANGE,
-                        range_type="linspace",
-                        range_start=0,
-                        range_stop=t_max,
-                        range_count=30,
-                        unit="s")
-        
-        # Position calculations
-        study.add_column("x", ColumnType.CALCULATED,
-                        formula="{v0} * cos({theta} * pi / 180) * {t}",
-                        unit="m")
-        
-        study.add_column("y", ColumnType.CALCULATED,
-                        formula="{v0} * sin({theta} * pi / 180) * {t} - 0.5 * {g} * {t}**2",
-                        unit="m")
-        
-        # Velocity components (derivatives)
-        study.add_column("vx", ColumnType.DERIVATIVE,
-                        derivative_of="x",
-                        with_respect_to="t",
-                        unit="m/s")
-        
-        study.add_column("vy", ColumnType.DERIVATIVE,
-                        derivative_of="y",
-                        with_respect_to="t",
-                        unit="m/s")
-        
-        self._add_study(study)
-        self.study_tabs.setCurrentIndex(self.study_tabs.count() - 1)
-        self.statusBar().showMessage("Loaded: Projectile Motion example")
-    
-    def _load_freefall_example(self):
-        """Load free fall example."""
-        study = DataTableStudy("Free Fall", workspace=self.workspace)
-        
-        self.workspace.add_constant("g", 9.81, "m/s^2")
-        self.workspace.add_constant("h0", 100.0, "m")
-        
-        # Time column
-        study.add_column("t", ColumnType.RANGE,
-                        range_type="linspace",
-                        range_start=0,
-                        range_stop=4.5,
-                        range_count=20,
-                        unit="s")
-        
-        # Height
-        study.add_column("h", ColumnType.CALCULATED,
-                        formula="{h0} - 0.5 * {g} * {t}**2",
-                        unit="m")
-        
-        # Velocity
-        study.add_column("v", ColumnType.DERIVATIVE,
-                        derivative_of="h",
-                        with_respect_to="t",
-                        unit="m/s")
-        
-        # Acceleration
-        study.add_column("a", ColumnType.DERIVATIVE,
-                        derivative_of="v",
-                        with_respect_to="t",
-                        unit="m/s^2")
-        
-        self._add_study(study)
-        self.study_tabs.setCurrentIndex(self.study_tabs.count() - 1)
-        self.statusBar().showMessage("Loaded: Free Fall example")
-    
-    def _load_oscillator_example(self):
-        """Load damped harmonic oscillator example."""
-        study = DataTableStudy("Damped Oscillator", workspace=self.workspace)
-        
-        self.workspace.add_constant("k", 10.0, "N/m")
-        self.workspace.add_constant("m", 0.5, "kg")
-        self.workspace.add_constant("b", 0.5, "kg/s")
-        self.workspace.add_constant("omega", 4.47, "rad/s")
-        self.workspace.add_constant("gamma", 0.5, "1/s")
-        
-        # Time column
-        study.add_column("t", ColumnType.RANGE,
-                        range_type="linspace",
-                        range_start=0,
-                        range_stop=10,
-                        range_count=100,
-                        unit="s")
-        
-        # Position (damped sinusoid)
-        study.add_column("x", ColumnType.CALCULATED,
-                        formula="exp(-{gamma} * {t}) * cos({omega} * {t})",
-                        unit="m")
-        
-        # Velocity
-        study.add_column("v", ColumnType.DERIVATIVE,
-                        derivative_of="x",
-                        with_respect_to="t",
-                        unit="m/s")
-        
-        # Acceleration
-        study.add_column("a", ColumnType.DERIVATIVE,
-                        derivative_of="v",
-                        with_respect_to="t",
-                        unit="m/s^2")
-        
-        self._add_study(study)
-        self.study_tabs.setCurrentIndex(self.study_tabs.count() - 1)
-        self.statusBar().showMessage("Loaded: Damped Oscillator example")
-    
-    def _load_derivatives_example(self):
-        """Load derivatives demonstration example."""
-        study = DataTableStudy("Derivatives Demo", workspace=self.workspace)
-        
-        # Time column
-        study.add_column("t", ColumnType.RANGE,
-                        range_type="linspace",
-                        range_start=0,
-                        range_stop=10,
-                        range_count=50,
-                        unit="s")
-        
-        # Position (cubic polynomial)
-        study.add_column("position", ColumnType.CALCULATED,
-                        formula="{t}**3 - 5*{t}**2 + 6*{t}",
-                        unit="m")
-        
-        # 1st derivative: velocity
-        study.add_column("velocity", ColumnType.DERIVATIVE,
-                        derivative_of="position",
-                        with_respect_to="t",
-                        unit="m/s")
-        
-        # 2nd derivative: acceleration
-        study.add_column("acceleration", ColumnType.DERIVATIVE,
-                        derivative_of="velocity",
-                        with_respect_to="t",
-                        unit="m/s^2")
-        
-        # 3rd derivative: jerk
-        study.add_column("jerk", ColumnType.DERIVATIVE,
-                        derivative_of="acceleration",
-                        with_respect_to="t",
-                        unit="m/s^3")
-        
-        self._add_study(study)
-        self.study_tabs.setCurrentIndex(self.study_tabs.count() - 1)
-        self.statusBar().showMessage("Loaded: Derivatives Demo example")
+        try:
+            # Ask if user wants to save current workspace (only if there are any tabs)
+            if self.study_tabs.count() > 0:
+                reply = QMessageBox.question(
+                    self,
+                    "Load Example",
+                    "Loading an example will replace the current workspace.\n\nDo you want to continue?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No
+                )
+                
+                if reply == QMessageBox.StandardButton.No:
+                    return
+            
+            # Load the workspace
+            with open(filepath, 'r') as f:
+                data = json.load(f)
+            
+            # Clear current workspace
+            while self.study_tabs.count() > 0:
+                self.study_tabs.removeTab(0)
+            
+            # Load new workspace
+            self.workspace = Workspace.from_dict(data)
+            self.setWindowTitle(f"{APP_NAME} v{APP_VERSION} - {self.workspace.name}")
+            
+            # Create tabs for each study
+            for study in self.workspace.studies.values():
+                self._add_study(study)
+            
+            # Always add constants tab
+            self._new_variables_tab()
+            
+            self.statusBar().showMessage(f"Loaded example: {self.workspace.name}")
+            self.notifications.show_success(f"Loaded: {self.workspace.name}")
+            
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Load Error",
+                f"Failed to load example:\n{str(e)}"
+            )
     
     def _save_workspace(self):
         """Save workspace to JSON file with atomic write."""
@@ -1056,6 +978,7 @@ class MainWindow(QMainWindow):
         
         <h3>View Menu</h3>
         <table>
+        <tr><td><b>Ctrl+K</b></td><td>Constants & Functions</td></tr>
         <tr><td><b>Ctrl+Tab</b></td><td>Next Tab</td></tr>
         <tr><td><b>Ctrl+Shift+Tab</b></td><td>Previous Tab</td></tr>
         </table>
