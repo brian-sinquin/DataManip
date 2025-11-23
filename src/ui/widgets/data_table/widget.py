@@ -20,7 +20,7 @@ from ..column_dialogs_extended import AddDerivativeColumnDialog, AddRangeColumnD
 
 from .model import DataTableModel
 from .header import EditableHeaderView
-from .constants import COLUMN_SYMBOLS
+from constants import COLUMN_SYMBOLS, TABLE_ROW_HEIGHT
 
 
 class DataTableWidget(QWidget):

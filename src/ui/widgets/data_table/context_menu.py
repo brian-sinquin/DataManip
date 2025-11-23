@@ -2,7 +2,7 @@
 
 from PySide6.QtWidgets import QMenu
 from studies.data_table_study import ColumnType
-from .constants import COLUMN_SYMBOLS
+from constants import COLUMN_SYMBOLS
 
 
 def show_data_table_context_menu(widget, position):

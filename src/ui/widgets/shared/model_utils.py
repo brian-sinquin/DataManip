@@ -6,7 +6,7 @@ Provides reusable model operations and formatting.
 
 from PySide6.QtCore import QAbstractTableModel
 from typing import Any
-from ..data_table.constants import DISPLAY_PRECISION
+from constants import DISPLAY_PRECISION
 
 
 def format_cell_value(value: Any) -> str:

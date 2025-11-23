@@ -6,7 +6,7 @@ from typing import Any
 
 from studies.data_table_study import DataTableStudy, ColumnType
 from ..shared import format_cell_value, emit_full_model_update
-from .constants import COLUMN_SYMBOLS
+from constants import COLUMN_SYMBOLS
 
 
 class DataTableModel(QAbstractTableModel):
