@@ -97,37 +97,98 @@ src/ui/widgets/
 
 ## Short-Term Priorities
 
-### Phase 2A: Code Quality ✅ COMPLETE (Nov 23)
-- [x] **Widget Reorganization** (~4 hours) - Split data_table into 8 files ✅
-- [x] Update imports in main_window.py and widgets/__init__.py ✅
-- [x] Verify 110/110 tests still pass ✅
-- [x] Clean modular structure achieved ✅
+### Phase 3: Extended Undo & Features (CURRENT - THIS WEEK)
+- [ ] **Extend Undo to More Operations** (~4 hours)
+  - [ ] add_column with metadata preservation
+  - [ ] Data modifications (add_rows, remove_rows, modify_data)
+  - [ ] Workspace constants (add/remove/modify)
+  - [ ] Add 15-20 tests for new undoable operations
+- [ ] **Keyboard Shortcuts Help** (~2 hours)
+  - [ ] F1 dialog showing all shortcuts
+  - [ ] Organized by category (File, Edit, View, etc.)
+  - [ ] Include Ctrl+Z/Ctrl+Y and all existing shortcuts
+- [ ] **Interpolation Columns** (~6 hours)
+  - [ ] Add INTERPOLATION column type
+  - [ ] Linear interpolation implementation
+  - [ ] Cubic spline interpolation
+  - [ ] UI dialog for interpolation settings
+  - [ ] 10-15 unit tests
 
-### Phase 2B: Statistics Widget ✅ COMPLETE (Nov 23)  
-- [x] Create StatisticsStudy class (~4 hours) ✅
-- [x] Create StatisticsWidget UI (~6 hours) ✅
-- [x] Integration with DataTableStudy ✅
-- [x] Add to "New Study" menu ✅
-- [x] Unit tests for statistics calculations (25 tests) ✅
+**Total Phase 3**: ~12 hours remaining
 
-### Phase 2C: Polish (NEXT - THIS WEEK)
-- [ ] **Preferences Window** (~6 hours)
-- [ ] **Enhanced Notifications** (~2 hours)
-- [ ] User documentation (getting started guide)
+### Phase 4: File I/O & Persistence (NEXT)
+- [ ] **Save/Load Workspace** (~8 hours)
+  - [ ] JSON serialization for all studies
+  - [ ] Workspace constants persistence
+  - [ ] File > Save/Open menu actions
+  - [ ] Atomic write with backup
+- [ ] **Auto-save & Recovery** (~4 hours)
+  - [ ] Periodic auto-save (configurable interval)
+  - [ ] Crash recovery on startup
+  - [ ] Unsaved changes warning
+- [ ] **Recent Files List** (~2 hours)
+  - [ ] Track last 10 opened files
+  - [ ] File menu integration
+  - [ ] Clear recent files option
+
+**Total Phase 4**: ~14 hours
+
+### Phase 2C: Preferences & Notifications ✅ COMPLETE (Nov 23)
+- **Preferences Dialog** - 4 tabs (General, Display, Performance, Recent Files)
+- **Settings Persistence** - JSON in ~/.datamanip/preferences.json
+- **Toast Notifications** - 4 types (info, warning, error, success)
+- **Progress Notifications** - With progress bars and cancel support
+- **60 Preferences Tests** - Full dialog coverage ✅
+- **29 Notification Tests** - Toast + progress + integration ✅
+
+### Phase 3: Undo/Redo ✅ COMPLETE (Nov 23)
+- **UndoManager** - Stack-based with configurable history (default 50)
+- **Column Operations** - Undo/redo for remove_column, rename_column
+- **Edit Menu** - Ctrl+Z/Ctrl+Y shortcuts with dynamic button states
+- **Tooltips** - Show action descriptions ("Undo: Remove column 'x'")
+- **Notification Integration** - Toast feedback for undo/redo operations
+- **21 Unit Tests** - UndoManager, UndoContext, DataTableStudy integration ✅
+
+### Phase 2C: Preferences & Notifications ✅ COMPLETE (Nov 23)
+- [x] **Preferences Window** (~6 hours) - 60 tests ✅
+- [x] **Enhanced Notifications** (~2 hours) - 29 tests ✅
+- [x] **Toast Notifications** - Info, warning, error, success types ✅
+- [x] **Progress Notifications** - With progress bars ✅
+- [x] **Preferences Dialog** - 4 tabs (General, Display, Performance, Recent Files) ✅
+- [x] **Settings Persistence** - JSON file in ~/.datamanip/ ✅
+
+### Phase 3: Undo/Redo & Advanced Features 🔄 IN PROGRESS
+- [x] **Undo/Redo System** (~8 hours) - 21 tests ✅
+  - [x] Stack-based UndoManager (max 50 history) ✅
+  - [x] Column operations (remove, rename) ✅
+  - [x] Edit menu with Ctrl+Z/Ctrl+Y ✅
+  - [x] Dynamic button states & tooltips ✅
+- [ ] **Extend Undo** (~4 hours)
+  - [ ] add_column operation
+  - [ ] Data modifications (add_rows, remove_rows, modify_data)
+  - [ ] Constants operations
+- [ ] **Interpolation Columns** (~6 hours)
+  - [ ] Linear interpolation
+  - [ ] Cubic spline interpolation
+  - [ ] Column type UI integration
+- [ ] **Keyboard Shortcuts Help** (~2 hours)
+  - [ ] F1 dialog showing all shortcuts
+  - [ ] Include new Ctrl+Z/Ctrl+Y
 
 **Total Phase 2A**: ✅ Complete (4 hours)  
 **Total Phase 2B**: ✅ Complete (10 hours)  
-**Total Phase 2C**: ~8 hours remaining
+**Total Phase 2C**: ✅ Complete (8 hours)  
+**Total Phase 3**: 12 hours remaining
 
 ---
 
 ## Known Issues 🐛
 
 ### Testing Status ✅
-- ✅ 160/160 tests passing (100%) 
-- ✅ Core layer fully tested (57/57) - includes 4 rename_variable tests
-- ✅ Studies layer fully tested (92/92) - includes 25 StatisticsStudy + 5 custom functions + 5 calculated constants + 11 optimization tests
-- ✅ UI layer tested (2/2)
+- ✅ **231/231 tests passing (100%)** 
+- ✅ Core layer fully tested (78/78) - includes undo manager (21 tests)
+- ✅ Studies layer fully tested (92/92)
+- ✅ UI layer tested (61/61) - includes preferences (60 tests) + notifications (29 tests) - 28 overlap
 
 ### Code Quality Issues 🟡
 - [x] data_table_widget.py too large (1,211 lines) → ✅ SPLIT into 8 files

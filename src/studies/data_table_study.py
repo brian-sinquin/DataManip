@@ -182,59 +182,108 @@ class DataTableStudy(Study):
             propagate_uncertainty: Auto-calculate uncertainty (CALCULATED type)
             uncertainty_reference: Parent column name (UNCERTAINTY type)
         """
-        # Add column to DataObject
-        if initial_data is not None:
-            self.table.set_column(name, initial_data)
-        else:
-            self.table.add_column(name)
+        # Check if undo tracking is enabled BEFORE disabling
+        should_track_undo = self.undo_manager.is_enabled()
         
-        # Store metadata
-        self.column_metadata[name] = {
-            "type": column_type,
-            "formula": formula,
-            "unit": unit,
-            "uncertainty": None,
-            "derivative_of": derivative_of,
-            "with_respect_to": with_respect_to,
-            "order": order,
-            "range_type": range_type,
-            "range_start": range_start,
-            "range_stop": range_stop,
-            "range_count": range_count,
-            "range_step": range_step,
-            "propagate_uncertainty": propagate_uncertainty,
-            "uncertainty_reference": uncertainty_reference
-        }
+        # Temporarily disable undo tracking to avoid recursive undo actions
+        if should_track_undo:
+            self.undo_manager.set_enabled(False)
         
-        # Handle by type
-        if column_type == ColumnType.CALCULATED and formula:
-            self.formula_engine.register_formula(name, formula)
-            self._update_dependencies(name, formula)
-            if len(self.table.data) > 0:
-                if self._auto_recalc:
-                    self._recalculate_column(name)
-                else:
-                    # Mark dirty if not auto-recalculating (batch mode)
-                    self.mark_dirty(name)
+        try:
+            # Add column to DataObject
+            if initial_data is not None:
+                self.table.set_column(name, initial_data)
+            else:
+                self.table.add_column(name)
             
-            # Auto-create uncertainty column if requested
-            if propagate_uncertainty:
-                uncert_name = f"{name}_u"
-                if uncert_name not in self.column_metadata:
-                    uncert_values = self._calculate_propagated_uncertainty(name)
-                    self.add_column(
-                        uncert_name,
-                        column_type=ColumnType.UNCERTAINTY,
-                        unit=unit,  # Same unit as parent
-                        initial_data=uncert_values,
-                        uncertainty_reference=name
-                    )
+            # Store metadata
+            self.column_metadata[name] = {
+                "type": column_type,
+                "formula": formula,
+                "unit": unit,
+                "uncertainty": None,
+                "derivative_of": derivative_of,
+                "with_respect_to": with_respect_to,
+                "order": order,
+                "range_type": range_type,
+                "range_start": range_start,
+                "range_stop": range_stop,
+                "range_count": range_count,
+                "range_step": range_step,
+                "propagate_uncertainty": propagate_uncertainty,
+                "uncertainty_reference": uncertainty_reference
+            }
+            
+            # Handle by type
+            if column_type == ColumnType.CALCULATED and formula:
+                self.formula_engine.register_formula(name, formula)
+                self._update_dependencies(name, formula)
+                if len(self.table.data) > 0:
+                    if self._auto_recalc:
+                        self._recalculate_column(name)
+                    else:
+                        # Mark dirty if not auto-recalculating (batch mode)
+                        self.mark_dirty(name)
+                
+                # Auto-create uncertainty column if requested
+                if propagate_uncertainty:
+                    uncert_name = f"{name}_u"
+                    if uncert_name not in self.column_metadata:
+                        uncert_values = self._calculate_propagated_uncertainty(name)
+                        self.add_column(
+                            uncert_name,
+                            column_type=ColumnType.UNCERTAINTY,
+                            unit=unit,  # Same unit as parent
+                            initial_data=uncert_values,
+                            uncertainty_reference=name
+                        )
+            
+            elif column_type == ColumnType.DERIVATIVE:
+                if len(self.table.data) > 0:
+                    self._calculate_derivative(name)
+            
+            elif column_type == ColumnType.RANGE:
+                self._generate_range(name)
         
-        elif column_type == ColumnType.DERIVATIVE:
-            if len(self.table.data) > 0:
-                self._calculate_derivative(name)
-        elif column_type == ColumnType.RANGE:
-            self._generate_range(name)
+        finally:
+            # Re-enable undo tracking
+            if should_track_undo:
+                self.undo_manager.set_enabled(True)
+                
+                # Create undo action after column is fully set up
+                # Capture final column data and metadata
+                column_data = self.table.get_column(name).copy()
+                metadata = self.column_metadata[name].copy()
+                uncert_name = f"{name}_u" if propagate_uncertainty else None
+                uncert_data = self.table.get_column(uncert_name).copy() if uncert_name and uncert_name in self.table.data.columns else None
+                uncert_metadata = self.column_metadata.get(uncert_name, {}).copy() if uncert_name else None
+                
+                def undo_add():
+                    with UndoContext(self.undo_manager, enabled=False):
+                        self.remove_column(name)
+                        # Also remove auto-created uncertainty column if it exists
+                        if uncert_name and uncert_name in self.table.data.columns:
+                            self.remove_column(uncert_name)
+                
+                def redo_add():
+                    with UndoContext(self.undo_manager, enabled=False):
+                        self.table.set_column(name, column_data.copy())
+                        self.column_metadata[name] = metadata.copy()
+                        # Restore formula registration if needed
+                        if metadata.get("formula"):
+                            self.formula_engine.register_formula(name, metadata["formula"])
+                        # Restore uncertainty column if needed
+                        if uncert_data is not None and uncert_metadata is not None:
+                            self.table.set_column(uncert_name, uncert_data.copy())
+                            self.column_metadata[uncert_name] = uncert_metadata.copy()
+                
+                action = UndoAction(
+                    action_type=ActionType.ADD_COLUMN,
+                    undo_func=undo_add,
+                    redo_func=redo_add,
+                    description=f"Add column '{name}'"
+                )
+                self.undo_manager.push(action)
     
     def add_columns_batch(self, columns: List[Dict[str, Any]]) -> List[str]:
         """Add multiple columns in one batch operation.

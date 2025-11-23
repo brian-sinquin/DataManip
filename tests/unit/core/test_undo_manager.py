@@ -2,6 +2,7 @@
 
 import pytest
 import numpy as np
+import pandas as pd
 
 from core.undo_manager import UndoManager, UndoAction, ActionType, UndoContext
 from studies.data_table_study import DataTableStudy, ColumnType
@@ -388,3 +389,109 @@ class TestDataTableStudyUndo:
         # Redo rename
         study.undo_manager.redo()
         assert "col3_renamed" in study.table.data.columns
+    
+    def test_add_column_undo(self):
+        """Test undo of column addition."""
+        workspace = Workspace("test", "numerical")
+        study = DataTableStudy("test", workspace)
+        
+        # Add column with initial data
+        study.add_column(
+            "new_col",
+            ColumnType.DATA,
+            unit="m",
+            initial_data=pd.Series([1, 2, 3, 4, 5])
+        )
+        
+        assert "new_col" in study.table.data.columns
+        assert study.column_metadata["new_col"]["unit"] == "m"
+        
+        # Undo
+        study.undo_manager.undo()
+        assert "new_col" not in study.table.data.columns
+        assert "new_col" not in study.column_metadata
+    
+    def test_add_column_redo(self):
+        """Test redo of column addition."""
+        workspace = Workspace("test", "numerical")
+        study = DataTableStudy("test", workspace)
+        
+        # Add column with initial data
+        study.add_column(
+            "test_col",
+            ColumnType.DATA,
+            initial_data=pd.Series([10, 20, 30])
+        )
+        
+        # Undo then redo
+        study.undo_manager.undo()
+        study.undo_manager.redo()
+        
+        assert "test_col" in study.table.data.columns
+        assert list(study.table.get_column("test_col")) == [10, 20, 30]
+    
+    def test_add_calculated_column_undo(self):
+        """Test undo of calculated column with formula."""
+        workspace = Workspace("test", "numerical")
+        study = DataTableStudy("test", workspace)
+        
+        # Add data column with initial data
+        study.add_column("x", ColumnType.DATA, initial_data=pd.Series([1, 2, 3]))
+        
+        # Add calculated column
+        study.add_column("y", ColumnType.CALCULATED, formula="{x} * 2")
+        
+        assert "y" in study.table.data.columns
+        assert study.column_metadata["y"]["formula"] == "{x} * 2"
+        
+        # Undo
+        study.undo_manager.undo()
+        assert "y" not in study.table.data.columns
+        assert "y" not in study.column_metadata
+    
+    def test_add_column_preserves_metadata(self):
+        """Test undo/redo preserves all column metadata."""
+        workspace = Workspace("test", "numerical")
+        study = DataTableStudy("test", workspace)
+        
+        # Add column with various metadata
+        study.add_column(
+            "data_col",
+            ColumnType.DATA,
+            unit="kg",
+            initial_data=pd.Series([1.5, 2.5, 3.5])
+        )
+        
+        # Undo then redo
+        study.undo_manager.undo()
+        study.undo_manager.redo()
+        
+        # Check metadata preserved
+        assert study.column_metadata["data_col"]["type"] == ColumnType.DATA
+        assert study.column_metadata["data_col"]["unit"] == "kg"
+        assert list(study.table.get_column("data_col")) == [1.5, 2.5, 3.5]
+    
+    def test_add_column_with_uncertainty_undo(self):
+        """Test undo removes both column and auto-created uncertainty column."""
+        workspace = Workspace("test", "numerical")
+        study = DataTableStudy("test", workspace)
+        
+        # Add data columns with initial data
+        study.add_column("x", ColumnType.DATA, initial_data=pd.Series([1, 2, 3]))
+        study.add_column("x_u", ColumnType.DATA, initial_data=pd.Series([0.1, 0.1, 0.1]))
+        
+        # Add calculated column with uncertainty propagation
+        study.add_column(
+            "y",
+            ColumnType.CALCULATED,
+            formula="{x} * 2",
+            propagate_uncertainty=True
+        )
+        
+        assert "y" in study.table.data.columns
+        assert "y_u" in study.table.data.columns  # Auto-created
+        
+        # Undo should remove both
+        study.undo_manager.undo()
+        assert "y" not in study.table.data.columns
+        assert "y_u" not in study.table.data.columns
