@@ -159,6 +159,29 @@ class MainWindow(QMainWindow):
         prev_tab_action.triggered.connect(self._prev_tab)
         view_menu.addAction(prev_tab_action)
         
+        # Examples menu
+        examples_menu = menubar.addMenu("E&xamples")
+        
+        projectile_action = QAction("Projectile Motion", self)
+        projectile_action.setToolTip("Baseball trajectory with uncertainty")
+        projectile_action.triggered.connect(lambda: self._load_example("projectile_motion"))
+        examples_menu.addAction(projectile_action)
+        
+        freefall_action = QAction("Free Fall Motion", self)
+        freefall_action.setToolTip("Simple free fall with drag")
+        freefall_action.triggered.connect(lambda: self._load_example("freefall"))
+        examples_menu.addAction(freefall_action)
+        
+        oscillator_action = QAction("Harmonic Oscillator", self)
+        oscillator_action.setToolTip("Damped spring oscillation")
+        oscillator_action.triggered.connect(lambda: self._load_example("oscillator"))
+        examples_menu.addAction(oscillator_action)
+        
+        derivatives_action = QAction("Derivatives Demo", self)
+        derivatives_action.setToolTip("Position → velocity → acceleration")
+        derivatives_action.triggered.connect(lambda: self._load_example("derivatives"))
+        examples_menu.addAction(derivatives_action)
+        
         # Help menu
         help_menu = menubar.addMenu("&Help")
         
@@ -568,6 +591,188 @@ class MainWindow(QMainWindow):
             current = self.study_tabs.currentIndex()
             prev_index = (current - 1) % self.study_tabs.count()
             self.study_tabs.setCurrentIndex(prev_index)
+    
+    def _load_example(self, example_name: str):
+        """Load example dataset into a new data table.
+        
+        Args:
+            example_name: Name of example to load
+        """
+        # Close welcome tab if present
+        for i in range(self.study_tabs.count()):
+            if self.study_tabs.tabText(i) == "Physics Demo":
+                self._close_study(i)
+                break
+        
+        # Create study based on example type
+        if example_name == "projectile_motion":
+            self._load_projectile_motion_example()
+        elif example_name == "freefall":
+            self._load_freefall_example()
+        elif example_name == "oscillator":
+            self._load_oscillator_example()
+        elif example_name == "derivatives":
+            self._load_derivatives_example()
+    
+    def _load_projectile_motion_example(self):
+        """Load projectile motion example - Baseball trajectory."""
+        study = DataTableStudy("Projectile Motion", workspace=self.workspace)
+        
+        # Physical constants
+        self.workspace.add_constant("g", 9.80665, "m/s^2")
+        self.workspace.add_constant("v0", 45.0, "m/s")
+        self.workspace.add_constant("theta", 35.0, "deg")
+        
+        import math
+        theta_rad = 35.0 * math.pi / 180.0
+        v0y = 45.0 * math.sin(theta_rad)
+        t_max = 2 * v0y / 9.80665
+        
+        # Time column
+        study.add_column("t", ColumnType.RANGE,
+                        range_type="linspace",
+                        range_start=0,
+                        range_stop=t_max,
+                        range_count=30,
+                        unit="s")
+        
+        # Position calculations
+        study.add_column("x", ColumnType.CALCULATED,
+                        formula="{v0} * cos({theta} * pi / 180) * {t}",
+                        unit="m")
+        
+        study.add_column("y", ColumnType.CALCULATED,
+                        formula="{v0} * sin({theta} * pi / 180) * {t} - 0.5 * {g} * {t}**2",
+                        unit="m")
+        
+        # Velocity components (derivatives)
+        study.add_column("vx", ColumnType.DERIVATIVE,
+                        derivative_of="x",
+                        with_respect_to="t",
+                        unit="m/s")
+        
+        study.add_column("vy", ColumnType.DERIVATIVE,
+                        derivative_of="y",
+                        with_respect_to="t",
+                        unit="m/s")
+        
+        self._add_study(study)
+        self.study_tabs.setCurrentIndex(self.study_tabs.count() - 1)
+        self.statusBar().showMessage("Loaded: Projectile Motion example")
+    
+    def _load_freefall_example(self):
+        """Load free fall example."""
+        study = DataTableStudy("Free Fall", workspace=self.workspace)
+        
+        self.workspace.add_constant("g", 9.81, "m/s^2")
+        self.workspace.add_constant("h0", 100.0, "m")
+        
+        # Time column
+        study.add_column("t", ColumnType.RANGE,
+                        range_type="linspace",
+                        range_start=0,
+                        range_stop=4.5,
+                        range_count=20,
+                        unit="s")
+        
+        # Height
+        study.add_column("h", ColumnType.CALCULATED,
+                        formula="{h0} - 0.5 * {g} * {t}**2",
+                        unit="m")
+        
+        # Velocity
+        study.add_column("v", ColumnType.DERIVATIVE,
+                        derivative_of="h",
+                        with_respect_to="t",
+                        unit="m/s")
+        
+        # Acceleration
+        study.add_column("a", ColumnType.DERIVATIVE,
+                        derivative_of="v",
+                        with_respect_to="t",
+                        unit="m/s^2")
+        
+        self._add_study(study)
+        self.study_tabs.setCurrentIndex(self.study_tabs.count() - 1)
+        self.statusBar().showMessage("Loaded: Free Fall example")
+    
+    def _load_oscillator_example(self):
+        """Load damped harmonic oscillator example."""
+        study = DataTableStudy("Damped Oscillator", workspace=self.workspace)
+        
+        self.workspace.add_constant("k", 10.0, "N/m")
+        self.workspace.add_constant("m", 0.5, "kg")
+        self.workspace.add_constant("b", 0.5, "kg/s")
+        self.workspace.add_constant("omega", 4.47, "rad/s")
+        self.workspace.add_constant("gamma", 0.5, "1/s")
+        
+        # Time column
+        study.add_column("t", ColumnType.RANGE,
+                        range_type="linspace",
+                        range_start=0,
+                        range_stop=10,
+                        range_count=100,
+                        unit="s")
+        
+        # Position (damped sinusoid)
+        study.add_column("x", ColumnType.CALCULATED,
+                        formula="exp(-{gamma} * {t}) * cos({omega} * {t})",
+                        unit="m")
+        
+        # Velocity
+        study.add_column("v", ColumnType.DERIVATIVE,
+                        derivative_of="x",
+                        with_respect_to="t",
+                        unit="m/s")
+        
+        # Acceleration
+        study.add_column("a", ColumnType.DERIVATIVE,
+                        derivative_of="v",
+                        with_respect_to="t",
+                        unit="m/s^2")
+        
+        self._add_study(study)
+        self.study_tabs.setCurrentIndex(self.study_tabs.count() - 1)
+        self.statusBar().showMessage("Loaded: Damped Oscillator example")
+    
+    def _load_derivatives_example(self):
+        """Load derivatives demonstration example."""
+        study = DataTableStudy("Derivatives Demo", workspace=self.workspace)
+        
+        # Time column
+        study.add_column("t", ColumnType.RANGE,
+                        range_type="linspace",
+                        range_start=0,
+                        range_stop=10,
+                        range_count=50,
+                        unit="s")
+        
+        # Position (cubic polynomial)
+        study.add_column("position", ColumnType.CALCULATED,
+                        formula="{t}**3 - 5*{t}**2 + 6*{t}",
+                        unit="m")
+        
+        # 1st derivative: velocity
+        study.add_column("velocity", ColumnType.DERIVATIVE,
+                        derivative_of="position",
+                        with_respect_to="t",
+                        unit="m/s")
+        
+        # 2nd derivative: acceleration
+        study.add_column("acceleration", ColumnType.DERIVATIVE,
+                        derivative_of="velocity",
+                        with_respect_to="t",
+                        unit="m/s^2")
+        
+        # 3rd derivative: jerk
+        study.add_column("jerk", ColumnType.DERIVATIVE,
+                        derivative_of="acceleration",
+                        with_respect_to="t",
+                        unit="m/s^3")
+        
+        self._add_study(study)
+        self.study_tabs.setCurrentIndex(self.study_tabs.count() - 1)
+        self.statusBar().showMessage("Loaded: Derivatives Demo example")
     
     def _save_workspace(self):
         """Save workspace to JSON file."""

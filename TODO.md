@@ -196,9 +196,11 @@ uv run pytest --cov=src --cov-report=html  # Coverage report
   - [x] DPI configuration (72-600)
   - [x] Toolbar button with Ctrl+Shift+E shortcut
   - [x] File browser integration
-- [ ] **Examples Menu** (~3 hours)
-  - File → Examples submenu
-  - One-click loaders for 4 demo datasets
+- [x] **Examples Menu** (~3 hours) - COMPLETED
+  - [x] Examples menu between View and Help
+  - [x] 4 example datasets: Projectile Motion, Free Fall, Harmonic Oscillator, Derivatives Demo
+  - [x] One-click loading with auto-switch to new tab
+  - [x] Comprehensive physics examples using all column types
 
 ### Phase 2: Important Features (MEDIUM Priority - 19-22 hours)
 - [ ] **Statistics Widget** (~10 hours)
