@@ -70,22 +70,33 @@ For complete project documentation, architecture, and testing details, see [PROJ
 - [ ] Add UI widget tests (future integration level)
 - [ ] Add end-to-end workflow tests (future)
 
-### Phase 2: File I/O (IN PROGRESS 🟡)
+### Phase 2: File I/O & Missing Legacy Features (IN PROGRESS 🟡)
 - [x] Save/load workspaces (JSON format)
-- [ ] Export to CSV/Excel
-- [ ] Import from CSV/Excel
+- [ ] **Export to CSV** - High priority, ~3 hours
+- [ ] **Export to Excel** - High priority, ~4 hours  
+- [ ] **Import from CSV** - High priority, ~4 hours
+- [ ] **Import from Excel** - High priority, ~5 hours
 - [ ] Auto-save and recovery
+- [ ] **Plot export to image** (PNG/PDF/SVG) - High priority, ~2 hours
+- [ ] **Examples menu** - One-click dataset loading, ~3 hours
+
+See [MISSING_FEATURES.md](MISSING_FEATURES.md) for complete analysis.
 
 ### Phase 3: Bug Fixes (COMPLETE ✅)
 - [x] Automatic recalculation verified working ✅
 - [x] Derivative columns verified working ✅
 - [ ] Uncertainty propagation (future feature - not yet implemented)
 
-### Phase 4: Advanced Features
-- [ ] Interpolation columns
+### Phase 4: Advanced Features from Legacy
+- [ ] **Statistics Widget** - Descriptive stats + visualizations, ~10 hours
+- [ ] **Preferences Window** - Settings dialog, ~6 hours
+- [ ] Interpolation columns (~5 hours)
 - [ ] Pint integration (unit-aware calculations)
-- [ ] Undo/redo system
-- [ ] Keyboard shortcuts
+- [ ] Undo/redo system (~15 hours)
+- [ ] Enhanced notifications system
+- [ ] Multi-language support (i18n)
+
+See [MISSING_FEATURES.md](MISSING_FEATURES.md) for detailed implementation plan.
 
 ---
 
@@ -174,7 +185,22 @@ uv run pytest --cov=src --cov-report=html  # Coverage report
 
 ## Planned Features
 
-### Examples & Documentation
+### Phase 1: Critical Missing Features (HIGH Priority - 6-8 hours) ⚠️
+- [x] **CSV/Excel Export/Import** (~3-5 hours) - COMPLETED
+  - [x] Backend methods in DataTableStudy (export_to_csv, import_from_csv, export_to_excel, import_from_excel)
+  - [x] File menu items (Export → CSV/Excel, Import → CSV/Excel)
+  - [x] Metadata preservation in exports
+  - [x] Keyboard shortcuts (Ctrl+E for CSV export, Ctrl+I for CSV import)
+- [ ] **Plot Export to Image** (~2 hours)
+  - Add export_image() method to PlotWidget
+  - PNG/SVG format support
+  - Toolbar button + File menu item
+- [ ] **Examples Menu** (~3 hours)
+  - File → Examples submenu
+  - One-click loaders for 4 demo datasets
+
+### Phase 2: Important Features (MEDIUM Priority - 19-22 hours)
+- [ ] **Statistics Widget** (~10 hours)
 - [ ] Additional physics examples:
   - Free fall with air resistance
   - Damped harmonic oscillator

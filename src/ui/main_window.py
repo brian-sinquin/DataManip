@@ -88,6 +88,31 @@ class MainWindow(QMainWindow):
         
         file_menu.addSeparator()
         
+        # Export/Import submenu
+        export_menu = file_menu.addMenu("&Export")
+        
+        export_csv_action = QAction("Export to &CSV...", self)
+        export_csv_action.setShortcut("Ctrl+E")
+        export_csv_action.triggered.connect(self._export_to_csv)
+        export_menu.addAction(export_csv_action)
+        
+        export_excel_action = QAction("Export to &Excel...", self)
+        export_excel_action.triggered.connect(self._export_to_excel)
+        export_menu.addAction(export_excel_action)
+        
+        import_menu = file_menu.addMenu("&Import")
+        
+        import_csv_action = QAction("Import from &CSV...", self)
+        import_csv_action.setShortcut("Ctrl+I")
+        import_csv_action.triggered.connect(self._import_from_csv)
+        import_menu.addAction(import_csv_action)
+        
+        import_excel_action = QAction("Import from &Excel...", self)
+        import_excel_action.triggered.connect(self._import_from_excel)
+        import_menu.addAction(import_excel_action)
+        
+        file_menu.addSeparator()
+        
         # Save/Load
         save_action = QAction("&Save Workspace...", self)
         save_action.setShortcut("Ctrl+S")
@@ -323,30 +348,181 @@ class MainWindow(QMainWindow):
         # Get study name from tab
         study_name = self.study_tabs.tabText(index)
         
-        # Don't allow closing Variables tab
-        if study_name == "Variables":
-            QMessageBox.information(
-                self,
-                "Cannot Close",
-                "Variables tab cannot be closed."
-            )
+        # Don't allow closing Constants tab
+        if study_name == "Constants & Functions":
             return
         
-        # Confirm close if not saved
+        # Confirm close
         reply = QMessageBox.question(
             self,
             "Close Study",
             f"Close study '{study_name}'?",
-            QMessageBox.Yes | QMessageBox.No  # type: ignore
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
         )
         
-        if reply == QMessageBox.Yes:  # type: ignore
+        if reply == QMessageBox.StandardButton.Yes:
             # Remove from workspace
-            if study_name in self.workspace.studies:
-                self.workspace.studies.pop(study_name)
+            self.workspace.remove_study(study_name)
             
             # Remove tab
             self.study_tabs.removeTab(index)
+    
+    def _export_to_csv(self):
+        """Export current data table to CSV."""
+        # Get current study
+        current_widget = self.study_tabs.currentWidget()
+        
+        if not isinstance(current_widget, DataTableWidget):
+            QMessageBox.warning(
+                self,
+                "Export Error",
+                "Please select a Data Table to export."
+            )
+            return
+        
+        study = current_widget.study
+        
+        # Get filename
+        filename, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export to CSV",
+            f"{study.name}.csv",
+            "CSV Files (*.csv)"
+        )
+        
+        if filename:
+            try:
+                # Ask about metadata
+                reply = QMessageBox.question(
+                    self,
+                    "Include Metadata",
+                    "Include column metadata (types, units, formulas) as comments?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.Yes
+                )
+                include_metadata = reply == QMessageBox.StandardButton.Yes
+                
+                study.export_to_csv(filename, include_metadata=include_metadata)
+                self.statusBar().showMessage(f"Exported to {filename}")
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "Export Error",
+                    f"Failed to export: {str(e)}"
+                )
+    
+    def _export_to_excel(self):
+        """Export current data table to Excel."""
+        current_widget = self.study_tabs.currentWidget()
+        
+        if not isinstance(current_widget, DataTableWidget):
+            QMessageBox.warning(
+                self,
+                "Export Error",
+                "Please select a Data Table to export."
+            )
+            return
+        
+        study = current_widget.study
+        
+        filename, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export to Excel",
+            f"{study.name}.xlsx",
+            "Excel Files (*.xlsx)"
+        )
+        
+        if filename:
+            try:
+                study.export_to_excel(filename, sheet_name=study.name)
+                self.statusBar().showMessage(f"Exported to {filename}")
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "Export Error",
+                    f"Failed to export: {str(e)}"
+                )
+    
+    def _import_from_csv(self):
+        """Import data table from CSV."""
+        filename, _ = QFileDialog.getOpenFileName(
+            self,
+            "Import from CSV",
+            "",
+            "CSV Files (*.csv)"
+        )
+        
+        if filename:
+            try:
+                # Ask about metadata
+                reply = QMessageBox.question(
+                    self,
+                    "Has Metadata",
+                    "Does the CSV file contain metadata comments?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.Yes
+                )
+                has_metadata = reply == QMessageBox.StandardButton.Yes
+                
+                # Ask for study name
+                import os
+                default_name = os.path.splitext(os.path.basename(filename))[0]
+                name, ok = QInputDialog.getText(
+                    self,
+                    "Import CSV",
+                    "Study name:",
+                    text=default_name
+                )
+                
+                if ok and name:
+                    study = DataTableStudy(name, workspace=self.workspace)
+                    study.import_from_csv(filename, has_metadata=has_metadata)
+                    
+                    self._add_study(study)
+                    self.study_tabs.setCurrentIndex(self.study_tabs.count() - 1)
+                    self.statusBar().showMessage(f"Imported from {filename}")
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "Import Error",
+                    f"Failed to import: {str(e)}"
+                )
+    
+    def _import_from_excel(self):
+        """Import data table from Excel."""
+        filename, _ = QFileDialog.getOpenFileName(
+            self,
+            "Import from Excel",
+            "",
+            "Excel Files (*.xlsx *.xls)"
+        )
+        
+        if filename:
+            try:
+                # Ask for study name
+                import os
+                default_name = os.path.splitext(os.path.basename(filename))[0]
+                name, ok = QInputDialog.getText(
+                    self,
+                    "Import Excel",
+                    "Study name:",
+                    text=default_name
+                )
+                
+                if ok and name:
+                    study = DataTableStudy(name, workspace=self.workspace)
+                    study.import_from_excel(filename)
+                    
+                    self._add_study(study)
+                    self.study_tabs.setCurrentIndex(self.study_tabs.count() - 1)
+                    self.statusBar().showMessage(f"Imported from {filename}")
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "Import Error",
+                    f"Failed to import: {str(e)}"
+                )
     
     def _rename_current_study(self):
         """Rename current study."""

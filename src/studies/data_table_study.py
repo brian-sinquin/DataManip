@@ -611,3 +611,217 @@ class DataTableStudy(Study):
                 study.formula_engine.register_formula(col_name, meta["formula"])
         
         return study
+    
+    def export_to_csv(self, filepath: str, include_metadata: bool = True) -> None:
+        """Export table to CSV format.
+        
+        Args:
+            filepath: Path to save CSV file
+            include_metadata: If True, includes metadata as comment header
+            
+        Example:
+            >>> study.export_to_csv("data.csv")
+            >>> study.export_to_csv("data.csv", include_metadata=False)  # Data only
+        """
+        import csv
+        
+        df = self.table.data
+        
+        with open(filepath, 'w', newline='', encoding='utf-8') as f:
+            if include_metadata:
+                # Write metadata header as comments
+                f.write("# DataManip CSV Export\n")
+                f.write(f"# Study: {self.name}\n")
+                f.write(f"# Version: 0.2.0\n")
+                f.write("#\n")
+                f.write("# Column Metadata:\n")
+                for col_name in self.table.columns:
+                    meta = self.column_metadata.get(col_name, {})
+                    col_type = meta.get("type", ColumnType.DATA)
+                    f.write(f"#   {col_name}: type={col_type}")
+                    
+                    if meta.get("unit"):
+                        f.write(f", unit={meta['unit']}")
+                    if meta.get("formula"):
+                        # Escape formula for CSV
+                        formula = meta['formula'].replace(',', ';')
+                        f.write(f", formula={formula}")
+                    if col_type == ColumnType.DERIVATIVE:
+                        f.write(f", derivative_of={meta.get('derivative_of', '')}")
+                        f.write(f", with_respect_to={meta.get('with_respect_to', '')}")
+                    if col_type == ColumnType.RANGE:
+                        f.write(f", range_type={meta.get('range_type', '')}")
+                    f.write("\n")
+                f.write("#\n")
+            
+            # Write data using pandas
+            df.to_csv(f, index=False)
+    
+    def import_from_csv(self, filepath: str, has_metadata: bool = True) -> None:
+        """Import table from CSV format.
+        
+        Args:
+            filepath: Path to CSV file
+            has_metadata: If True, expects metadata comment header
+            
+        Note:
+            This replaces current table data. Complex metadata (formulas, derivatives)
+            may need manual recreation after import.
+            
+        Example:
+            >>> study.import_from_csv("data.csv")
+            >>> study.import_from_csv("simple.csv", has_metadata=False)
+        """
+        # Load CSV (skip comment lines)
+        df = pd.read_csv(filepath, comment='#' if has_metadata else None)
+        
+        # Clear existing table
+        self.table = DataObject.from_dataframe("table", df)
+        self.column_metadata.clear()
+        self.formula_engine = FormulaEngine()
+        
+        # Create basic metadata for all columns
+        for col_name in df.columns:
+            self.column_metadata[col_name] = {
+                "type": ColumnType.DATA,
+                "unit": None
+            }
+        
+        # TODO: Parse metadata from comments if has_metadata=True
+        # For now, all columns imported as DATA type
+    
+    def export_to_excel(self, filepath: str, sheet_name: str = "Data") -> None:
+        """Export table to Excel format.
+        
+        Args:
+            filepath: Path to save Excel file (.xlsx)
+            sheet_name: Name of the sheet to create
+            
+        Requires:
+            openpyxl package (pip install openpyxl)
+            
+        Example:
+            >>> study.export_to_excel("data.xlsx")
+            >>> study.export_to_excel("data.xlsx", sheet_name="Experiment1")
+        """
+        try:
+            import openpyxl
+            from openpyxl.styles import Font, PatternFill
+        except ImportError:
+            raise ImportError(
+                "openpyxl is required for Excel export. "
+                "Install with: pip install openpyxl"
+            )
+        
+        df = self.table.data
+        
+        # Create workbook and sheet
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = sheet_name
+        
+        # Write metadata section
+        ws['A1'] = 'DataManip Export'
+        ws['A1'].font = Font(bold=True, size=14)
+        ws['A2'] = f'Study: {self.name}'
+        ws['A3'] = 'Version: 0.2.0'
+        
+        # Write column metadata
+        row = 5
+        ws[f'A{row}'] = 'Column Metadata:'
+        ws[f'A{row}'].font = Font(bold=True)
+        row += 1
+        
+        ws[f'A{row}'] = 'Column'
+        ws[f'B{row}'] = 'Type'
+        ws[f'C{row}'] = 'Unit'
+        ws[f'D{row}'] = 'Formula/Info'
+        for cell in [ws[f'A{row}'], ws[f'B{row}'], ws[f'C{row}'], ws[f'D{row}']]:
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill(start_color='DDDDDD', fill_type='solid')
+        row += 1
+        
+        for col_name in self.table.columns:
+            meta = self.column_metadata.get(col_name, {})
+            ws[f'A{row}'] = col_name
+            ws[f'B{row}'] = meta.get('type', ColumnType.DATA)
+            ws[f'C{row}'] = meta.get('unit', '')
+            
+            # Formula or other info
+            if meta.get('formula'):
+                ws[f'D{row}'] = meta['formula']
+            elif meta.get('type') == ColumnType.DERIVATIVE:
+                ws[f'D{row}'] = f"d({meta.get('derivative_of', '')})/d({meta.get('with_respect_to', '')})"
+            elif meta.get('type') == ColumnType.RANGE:
+                ws[f'D{row}'] = meta.get('range_type', '')
+            row += 1
+        
+        # Add spacing
+        row += 2
+        
+        # Write data section
+        ws[f'A{row}'] = 'Data:'
+        ws[f'A{row}'].font = Font(bold=True)
+        row += 1
+        
+        # Write column headers
+        for col_idx, col_name in enumerate(df.columns, start=1):
+            cell = ws.cell(row, col_idx, col_name)
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill(start_color='EEEEEE', fill_type='solid')
+        row += 1
+        
+        # Write data rows
+        for _, data_row in df.iterrows():
+            for col_idx, value in enumerate(data_row, start=1):
+                ws.cell(row, col_idx, value)
+            row += 1
+        
+        # Auto-adjust column widths
+        for col in ws.columns:
+            max_length = 0
+            col_letter = col[0].column_letter
+            for cell in col:
+                try:
+                    if cell.value:
+                        max_length = max(max_length, len(str(cell.value)))
+                except:
+                    pass
+            ws.column_dimensions[col_letter].width = min(max_length + 2, 50)
+        
+        # Save workbook
+        wb.save(filepath)
+    
+    def import_from_excel(self, filepath: str, sheet_name: str = "Data") -> None:
+        """Import table from Excel format.
+        
+        Args:
+            filepath: Path to Excel file (.xlsx)
+            sheet_name: Name of the sheet to read
+            
+        Note:
+            Imports the data section only. Metadata needs manual recreation.
+            
+        Example:
+            >>> study.import_from_excel("data.xlsx")
+            >>> study.import_from_excel("data.xlsx", sheet_name="Experiment1")
+        """
+        # Use pandas to read Excel
+        df = pd.read_excel(filepath, sheet_name=sheet_name, skiprows=None)
+        
+        # Find where data section starts (look for "Data:" marker)
+        # For now, simple approach - assume data starts after empty rows
+        # TODO: Smarter parsing to find data section
+        
+        # Clear existing table
+        self.table = DataObject.from_dataframe("table", df)
+        self.column_metadata.clear()
+        self.formula_engine = FormulaEngine()
+        
+        # Create basic metadata
+        for col_name in df.columns:
+            self.column_metadata[col_name] = {
+                "type": ColumnType.DATA,
+                "unit": None
+            }
+
