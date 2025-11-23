@@ -72,11 +72,13 @@ class TestToastNotification:
         toast = ToastNotification("Test", main_window)
         toast.show_notification()
         
-        # Should be near bottom center
+        # Should be at top-right corner
         parent_rect = main_window.rect()
-        expected_x = (parent_rect.width() - toast.width()) // 2
+        expected_x = parent_rect.width() - toast.width() - 20
+        expected_y = 60  # Below menu bar
         
         assert abs(toast.x() - expected_x) < 10  # Allow small margin
+        assert abs(toast.y() - expected_y) < 10
 
 
 class TestNotificationManager:
@@ -262,13 +264,16 @@ class TestNotificationIntegration:
         manager = NotificationManager(main_window)
         
         manager.show_info("First")
-        first_pos = manager.active_notifications[0].y()
+        first_pos_initial = manager.active_notifications[0].y()
         
         manager.show_info("Second")
+        first_pos_after = manager.active_notifications[0].y()
         second_pos = manager.active_notifications[1].y()
         
-        # Second should be below first (higher y value at bottom)
-        assert first_pos < second_pos
+        # First notification gets moved down when second appears (higher y)
+        # Second appears at the top position (60)
+        assert second_pos == 60  # Second is at top
+        assert first_pos_after > first_pos_initial  # First was moved down
     
     def test_progress_with_manager(self, qapp, main_window):
         """Test progress notification alongside toast notifications."""

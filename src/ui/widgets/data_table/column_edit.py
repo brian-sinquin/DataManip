@@ -136,9 +136,9 @@ def _edit_derivative_column(widget, col_name: str):
     dialog.name_edit.setText(col_name)
     dialog.name_edit.setEnabled(False)  # Can't rename
     
-    # Try to set current selections
-    y_col = col_meta.get("y_column")
-    x_col = col_meta.get("x_column")
+    # Try to set current selections (use correct metadata keys)
+    y_col = col_meta.get("derivative_of")  # Changed from y_column
+    x_col = col_meta.get("with_respect_to")  # Changed from x_column
     order = col_meta.get("order", 1)
     unit = col_meta.get("unit")
     
@@ -153,10 +153,10 @@ def _edit_derivative_column(widget, col_name: str):
     if dialog.exec():
         values = dialog.get_values()
         
-        # Update metadata
+        # Update metadata (use correct metadata keys)
         widget.study.column_metadata[col_name].update({
-            "y_column": values["y_column"],
-            "x_column": values["x_column"],
+            "derivative_of": values["y_column"],  # Map to correct key
+            "with_respect_to": values["x_column"],  # Map to correct key
             "order": values["order"],
             "unit": values["unit"]
         })

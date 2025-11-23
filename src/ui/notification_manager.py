@@ -72,10 +72,10 @@ class ToastNotification(QLabel):
     def show_notification(self):
         """Show notification with animations."""
         if self.parent():
-            # Position at bottom center of parent
+            # Position at top-right corner of parent
             parent_rect = self.parent().rect()
-            x = (parent_rect.width() - self.width()) // 2
-            y = parent_rect.height() - self.height() - 50
+            x = parent_rect.width() - self.width() - 20
+            y = 60  # Below menu bar
             self.move(x, y)
         
         self.show()
@@ -196,13 +196,13 @@ class NotificationManager:
         if not self.active_notifications:
             return
         
-        # Move existing notifications up
+        # Move existing notifications down (stacking downward from top-right)
         spacing = 10
         offset = new_toast.height() + spacing
         
         for notification in self.active_notifications:
             current_pos = notification.pos()
-            notification.move(current_pos.x(), current_pos.y() - offset)
+            notification.move(current_pos.x(), current_pos.y() + offset)
     
     def _remove_notification(self, toast: ToastNotification):
         """Remove notification from active list.
