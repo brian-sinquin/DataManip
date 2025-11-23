@@ -13,6 +13,8 @@ import json
 from pathlib import Path
 import numpy as np
 
+from .preferences_dialog import PreferencesDialog
+from .notification_manager import NotificationManager, ProgressNotification
 from constants import (
     MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT,
     APP_NAME, APP_VERSION, APP_DESCRIPTION
@@ -43,15 +45,23 @@ class MainWindow(QMainWindow):
         # Single workspace
         self.workspace = Workspace("Workspace", "numerical")
         
+        # Notification manager
+        self.notifications = None  # Initialized after UI setup
+        
         # Setup UI
         self._setup_ui()
         self._setup_menu()
+        
+        # Initialize notification manager after UI is ready
+        self.notifications = NotificationManager(self)
         
         # Create default study
         self._create_default_study()
         
         # Welcome message
         self.statusBar().showMessage("Welcome to DataManip! Press Ctrl+T for new table, Ctrl+P for new plot, F1 for help")
+        self.notifications.show_info("Welcome to DataManip! Press F1 for keyboard shortcuts")
+
     
     def _setup_ui(self):
         """Setup UI components."""
@@ -185,6 +195,14 @@ class MainWindow(QMainWindow):
         derivatives_action.setToolTip("Position → velocity → acceleration")
         derivatives_action.triggered.connect(lambda: self._load_example("derivatives"))
         examples_menu.addAction(derivatives_action)
+        
+        # Tools menu
+        tools_menu = menubar.addMenu("&Tools")
+        
+        preferences_action = QAction("&Preferences...", self)
+        preferences_action.setShortcut("Ctrl+,")
+        preferences_action.triggered.connect(self._show_preferences)
+        tools_menu.addAction(preferences_action)
         
         # Help menu
         help_menu = menubar.addMenu("&Help")
@@ -328,6 +346,7 @@ class MainWindow(QMainWindow):
             
             # Switch to new study
             self.study_tabs.setCurrentIndex(self.study_tabs.count() - 1)
+            self.notifications.show_success(f"Data table '{name}' created")
     
     def _new_plot(self):
         """Create new Plot study."""
@@ -347,6 +366,7 @@ class MainWindow(QMainWindow):
             
             # Switch to new study
             self.study_tabs.setCurrentIndex(self.study_tabs.count() - 1)
+            self.notifications.show_success(f"Plot '{name}' created")
     
     def _new_statistics(self):
         """Create new Statistics study."""
@@ -616,6 +636,7 @@ class MainWindow(QMainWindow):
             
             # Update tab
             self.study_tabs.setTabText(current_index, new_name)
+            self.notifications.show_success(f"Study renamed to '{new_name}'")
     
     def _close_current_study(self):
         """Close current study tab."""
@@ -838,12 +859,14 @@ class MainWindow(QMainWindow):
                 json.dump(workspace_data, f, indent=2)
             
             self.statusBar().showMessage(f"Workspace saved to {Path(filename).name}", 3000)
+            self.notifications.show_success(f"Workspace saved to {Path(filename).name}")
         except Exception as e:
             QMessageBox.critical(
                 self,
                 "Save Error",
                 f"Failed to save workspace:\n{str(e)}"
             )
+            self.notifications.show_error("Failed to save workspace")
     
     def _load_workspace(self):
         """Load workspace from JSON file."""
@@ -880,12 +903,14 @@ class MainWindow(QMainWindow):
             self._new_variables_tab()
             
             self.statusBar().showMessage(f"Workspace loaded from {Path(filename).name}", 3000)
+            self.notifications.show_success(f"Workspace loaded from {Path(filename).name}")
         except Exception as e:
             QMessageBox.critical(
                 self,
                 "Load Error",
                 f"Failed to load workspace:\n{str(e)}"
             )
+            self.notifications.show_error("Failed to load workspace")
     
     def _show_shortcuts(self):
         """Show keyboard shortcuts help."""
@@ -904,6 +929,7 @@ class MainWindow(QMainWindow):
         <tr><td><b>F2</b></td><td>Rename Study</td></tr>
         <tr><td><b>Ctrl+Tab</b></td><td>Next Tab</td></tr>
         <tr><td><b>Ctrl+Shift+Tab</b></td><td>Previous Tab</td></tr>
+        <tr><td><b>Ctrl+,</b></td><td>Preferences</td></tr>
         <tr><td><b>F1</b></td><td>Show This Help</td></tr>
         </table>
         <h4>DataTable View</h4>
@@ -931,6 +957,30 @@ class MainWindow(QMainWindow):
         </table>
         """
         QMessageBox.information(self, "Keyboard Shortcuts", shortcuts_text)
+    
+    def _show_preferences(self):
+        """Show preferences dialog."""
+        dialog = PreferencesDialog(self)
+        dialog.settings_changed.connect(self._apply_preferences)
+        dialog.exec()
+    
+    def _apply_preferences(self, settings: dict):
+        """Apply preferences changes.
+        
+        Args:
+            settings: Dictionary of settings from preferences dialog
+        """
+        # Update display precision
+        if "display_precision" in settings:
+            # This will affect new views; existing views keep their formatting
+            pass
+        
+        # Update theme if changed
+        if settings.get("theme") != "System Default":
+            # TODO: Implement theme switching when theme system is added
+            pass
+        
+        self.statusBar().showMessage("Preferences updated", 3000)
     
     def _show_about(self):
         """Show about dialog."""
