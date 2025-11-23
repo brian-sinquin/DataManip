@@ -132,6 +132,7 @@ class FormulaEngine:
                 context[const_name] = result
                 return result
             except Exception as e:
+                # Debug warning for developers - constant evaluation failed
                 if not suppress_warnings:
                     print(f"Warning: Failed to evaluate calculated constant {const_name}: {e}")
                 return None

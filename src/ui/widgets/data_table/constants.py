@@ -13,7 +13,7 @@ The column symbols provide quick visual feedback about column types:
 """
 
 # Display settings
-DISPLAY_PRECISION = 33  # Number of significant digits to display in cells
+DISPLAY_PRECISION = 3  # Number of significant digits to display in cells
 
 # Column type symbols for headers
 COLUMN_SYMBOLS = {

@@ -359,8 +359,7 @@ class DataTableWidget(QWidget):
         Args:
             row: Row index
         """
-        # Simple implementation: add row at end then move data
-        # TODO: Implement proper row insertion
+        # Current implementation: adds row at end (proper insertion would require DataFrame.insert)
         self._add_row()
     
     def _delete_row(self, row: int):

@@ -556,9 +556,8 @@ class DataTableStudy(Study):
                     result_uncertainties.append(np.sqrt(variance))
             
             return pd.Series(result_uncertainties)
-        except Exception as e:
-            # If calculation fails, return NaN
-            print(f"Warning: Uncertainty calculation failed for {name}: {e}")
+        except Exception:
+            # If calculation fails, return NaN (silent - UI shows NaN)
             return pd.Series([np.nan] * len(self.table.data))
     
     def _recalculate_column(self, name: str, context: Optional[Dict[str, Any]] = None):
@@ -607,9 +606,8 @@ class DataTableStudy(Study):
         # Evaluate formula
         try:
             result = self.formula_engine.evaluate(formula, context)
-        except Exception as e:
-            # If evaluation fails, fill with NaN
-            print(f"Warning: Failed to calculate {name}: {e}")
+        except Exception:
+            # If evaluation fails, fill with NaN (silent - UI shows NaN)
             result = np.full(len(self.table.data), np.nan)
         
         # Store result (convert back to Series if needed)
@@ -1064,7 +1062,8 @@ class DataTableStudy(Study):
                 try:
                     if cell.value:
                         max_length = max(max_length, len(str(cell.value)))
-                except:
+                except (AttributeError, TypeError):
+                    # Skip cells that can't be converted to string
                     pass
             ws.column_dimensions[col_letter].width = min(max_length + 2, 50)
         
