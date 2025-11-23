@@ -1,4 +1,8 @@
-"""DataManip - Data manipulation software for experimental sciences."""
+"""
+DataManip - Data manipulation application for experimental sciences.
 
-__version__ = "0.1.0"
+A flexible, workspace-based application for analyzing numerical data,
+images, and other scientific datasets.
+"""
 
+__version__ = "0.2.0"

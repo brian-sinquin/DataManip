@@ -2,54 +2,67 @@
 Basic usage example for DataManip.
 
 This example demonstrates:
-- Creating a simple data table
+- Creating a DataTableStudy
 - Adding data columns
-- Adding calculated columns
-- Saving and loading data
+- Adding calculated columns  
+- Working with formulas
 """
 
-from widgets import DataTableWidget, DataTableModel
-from constants import DataType
+import sys
+from pathlib import Path
+
+# Add src to path
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+from studies.data_table_study import DataTableStudy, ColumnType
+
 
 def main():
-    # Create model
-    model = DataTableModel()
+    print("=" * 70)
+    print("BASIC USAGE EXAMPLE")
+    print("=" * 70)
     
-    # Add a time column
-    model.add_data_column(
-        name="time",
-        unit="s",
-        description="Time in seconds",
-        data=[0, 1, 2, 3, 4, 5]
-    )
+    # Create study
+    study = DataTableStudy("Basic Example")
     
-    # Add a position column
-    model.add_data_column(
-        name="position",
-        unit="m",
-        description="Position in meters",
-        data=[0, 5, 20, 45, 80, 125]
-    )
+    # Add time column (data)
+    study.add_column("time", ColumnType.DATA, unit="s")
     
-    # Add a calculated velocity column
-    model.add_calculated_column(
-        name="velocity",
+    # Add position column (data)
+    study.add_column("position", ColumnType.DATA, unit="m")
+    
+    # Add calculated velocity column
+    study.add_column(
+        "velocity",
+        ColumnType.CALCULATED,
         formula="{position} / {time}",
-        unit="m/s",
-        description="Average velocity"
+        unit="m/s"
     )
     
-    # Print data
-    print("Time (s)\tPosition (m)\tVelocity (m/s)")
-    for i in range(model.rowCount()):
-        time = model.get_cell_value(i, "time")
-        pos = model.get_cell_value(i, "position")
-        vel = model.get_cell_value(i, "velocity")
-        print(f"{time}\t\t{pos}\t\t{vel:.2f if vel else 'N/A'}")
+    print("\nColumns created:")
+    print(f"  - time [{study.get_column_unit('time')}]")
+    print(f"  - position [{study.get_column_unit('position')}]")
+    print(f"  - velocity [{study.get_column_unit('velocity')}] = {study.get_column_formula('velocity')}")
     
-    # Save to file
-    model.save_to_file("example_data.json")
-    print("\nData saved to example_data.json")
+    # Add data
+    study.add_rows(6)
+    time_data = [0, 1, 2, 3, 4, 5]
+    position_data = [0, 5, 20, 45, 80, 125]
+    
+    study.table.data["time"] = time_data
+    study.table.data["position"] = position_data
+    
+    # Recalculate formulas
+    study.on_data_changed("position")
+    
+    print("\nData table:")
+    print(study.table.data)
+    
+    print("\n" + "=" * 70)
+    print("Example complete!")
+    print("=" * 70)
+
 
 if __name__ == "__main__":
     main()
+

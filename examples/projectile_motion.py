@@ -5,15 +5,27 @@ Demonstrates:
 - Range columns for evenly-spaced time values
 - Calculated columns for position using physics formulas
 - Derivative columns for velocity and acceleration
-- Uncertainty propagation
+- Variable usage for constants
 """
 
-from widgets import DataTableModel
+import sys
+from pathlib import Path
 import numpy as np
 
-def create_projectile_motion_table():
-    """Create a projectile motion data table."""
-    model = DataTableModel()
+# Add src to path
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+from studies.data_table_study import DataTableStudy, ColumnType
+
+
+def main():
+    """Create projectile motion analysis."""
+    print("=" * 70)
+    print("PROJECTILE MOTION EXAMPLE")
+    print("=" * 70)
+    
+    # Create study
+    study = DataTableStudy("Projectile Motion")
     
     # Initial conditions
     v0 = 20.0  # m/s
@@ -21,112 +33,89 @@ def create_projectile_motion_table():
     g = 9.81  # m/s²
     
     # Set variables
-    model.set_variables({
-        'v0': v0,
-        'angle': angle,
-        'g': g,
-        'angle_rad': np.deg2rad(angle)
-    })
+    study.add_variable("v0", v0, "m/s")
+    study.add_variable("angle_deg", angle, "deg")
+    study.add_variable("g", g, "m/s^2")
+    study.add_variable("angle_rad", np.deg2rad(angle), "rad")
+    study.add_variable("cos_angle", np.cos(np.deg2rad(angle)))
+    study.add_variable("sin_angle", np.sin(np.deg2rad(angle)))
+    
+    print("\nInitial conditions:")
+    print(f"  v0 = {v0} m/s")
+    print(f"  angle = {angle}°")
+    print(f"  g = {g} m/s²")
     
     # Time range from 0 to 3 seconds
-    model.add_range_column(
-        name="t",
-        start=0.0,
-        end=3.0,
-        points=31,
-        unit="s",
-        description="Time"
+    print("\n" + "-" * 70)
+    print("Creating time range (0 to 3s, 31 points)")
+    study.add_column(
+        "t",
+        ColumnType.RANGE,
+        range_type="linspace",
+        range_start=0.0,
+        range_stop=3.0,
+        range_count=31,
+        unit="s"
     )
+    print("✓ Time column created")
     
-    # Horizontal position
-    model.add_calculated_column(
-        name="x",
-        formula="v0 * cos(angle_rad) * {t}",
-        unit="m",
-        description="Horizontal position",
-        propagate_uncertainty=True
+    # Horizontal position: x = v0 * cos(θ) * t
+    print("\n" + "-" * 70)
+    print("Calculating horizontal position: x = v0·cos(θ)·t")
+    study.add_column(
+        "x",
+        ColumnType.CALCULATED,
+        formula="{v0} * {cos_angle} * {t}",
+        unit="m"
     )
+    print("✓ x column created")
     
-    # Vertical position
-    model.add_calculated_column(
-        name="y",
-        formula="v0 * sin(angle_rad) * {t} - 0.5 * g * {t}**2",
-        unit="m",
-        description="Vertical position",
-        propagate_uncertainty=True
+    # Vertical position: y = v0 * sin(θ) * t - 0.5 * g * t²
+    print("\n" + "-" * 70)
+    print("Calculating vertical position: y = v0·sin(θ)·t - 0.5·g·t²")
+    study.add_column(
+        "y",
+        ColumnType.CALCULATED,
+        formula="{v0} * {sin_angle} * {t} - 0.5 * {g} * {t}**2",
+        unit="m"
     )
+    print("✓ y column created")
     
     # Horizontal velocity (derivative)
-    model.add_derivative_column(
-        name="vx",
-        numerator="x",
-        denominator="t",
-        description="Horizontal velocity"
+    print("\n" + "-" * 70)
+    print("Calculating horizontal velocity: vx = dx/dt")
+    study.add_column(
+        "vx",
+        ColumnType.DERIVATIVE,
+        derivative_of="x",
+        with_respect_to="t",
+        order=1,
+        unit="m/s"
     )
+    print("✓ vx column created")
     
     # Vertical velocity (derivative)
-    model.add_derivative_column(
-        name="vy",
-        numerator="y",
-        denominator="t",
-        description="Vertical velocity"
+    print("\n" + "-" * 70)
+    print("Calculating vertical velocity: vy = dy/dt")
+    study.add_column(
+        "vy",
+        ColumnType.DERIVATIVE,
+        derivative_of="y",
+        with_respect_to="t",
+        order=1,
+        unit="m/s"
     )
+    print("✓ vy column created")
     
-    # Total velocity
-    model.add_calculated_column(
-        name="v",
-        formula="sqrt({vx}**2 + {vy}**2)",
-        unit="m/s",
-        description="Total velocity"
-    )
+    print("\n" + "=" * 70)
+    print("Data sample (first 10 rows):")
+    print("=" * 70)
+    print(study.table.data.head(10))
     
-    # Kinetic energy
-    mass = 0.145  # kg (baseball)
-    model.set_variables({'m': mass})
-    model.add_calculated_column(
-        name="KE",
-        formula="0.5 * m * {v}**2",
-        unit="J",
-        description="Kinetic energy"
-    )
-    
-    # Potential energy
-    model.add_calculated_column(
-        name="PE",
-        formula="m * g * {y}",
-        unit="J",
-        description="Potential energy"
-    )
-    
-    # Total energy
-    model.add_calculated_column(
-        name="E_total",
-        formula="{KE} + {PE}",
-        unit="J",
-        description="Total mechanical energy"
-    )
-    
-    return model
+    print("\n" + "=" * 70)
+    print("Example complete!")
+    print("=" * 70)
+
 
 if __name__ == "__main__":
-    model = create_projectile_motion_table()
-    
-    # Print first 10 rows
-    print("Projectile Motion Analysis")
-    print("="*80)
-    print(f"{'t(s)':<8}{'x(m)':<10}{'y(m)':<10}{'vx(m/s)':<12}{'vy(m/s)':<12}{'E(J)':<10}")
-    print("-"*80)
-    
-    for i in range(min(10, model.rowCount())):
-        t = model.get_cell_value(i, "t")
-        x = model.get_cell_value(i, "x")
-        y = model.get_cell_value(i, "y")
-        vx = model.get_cell_value(i, "vx")
-        vy = model.get_cell_value(i, "vy")
-        e = model.get_cell_value(i, "E_total")
-        
-        print(f"{t:<8.2f}{x:<10.2f}{y:<10.2f}{vx:<12.2f}{vy:<12.2f}{e:<10.2f}")
-    
-    # Save model
-    model.save_to_file("projectile_motion.json")
-    print("\nData saved to projectile_motion.json")
+    main()

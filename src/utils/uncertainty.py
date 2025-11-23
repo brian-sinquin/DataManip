@@ -1,32 +1,20 @@
-"""
-Uncertainty propagation for mathematical formulas.
+"""Uncertainty propagation for mathematical formulas.
 
-This module provides tools to convert mathematical expressions to SymPy
-symbolic form and calculate combined uncertainties using discrete differential
-forms (partial derivatives).
+Provides tools to convert mathematical expressions to SymPy symbolic form
+and calculate combined uncertainties using partial derivatives.
 
 The uncertainty propagation follows the standard formula:
     δf = sqrt(Σ(∂f/∂xᵢ * δxᵢ)²)
-
-where:
-- δf is the combined uncertainty of the result
-- ∂f/∂xᵢ are the partial derivatives with respect to each variable
-- δxᵢ are the uncertainties of each input variable
 """
 
 import ast
 import sympy as sp
-from typing import Dict, Union, Optional, Tuple, Any
+from typing import Dict
 
 
 class FormulaToSymPy:
-    """Convert mathematical expressions to SymPy symbolic form.
-    
-    This class converts AST-based formulas (safe for evaluation) into
-    SymPy symbolic expressions that can be differentiated and manipulated.
-    """
+    """Convert mathematical expressions to SymPy symbolic form."""
 
-    # Map AST operators to SymPy equivalents
     OPERATORS = {
         ast.Add: lambda a, b: a + b,
         ast.Sub: lambda a, b: a - b,
@@ -37,7 +25,6 @@ class FormulaToSymPy:
         ast.UAdd: lambda a: +a,
     }
 
-    # Map function names to SymPy functions
     SYMPY_FUNCTIONS = {
         'abs': sp.Abs,
         'sqrt': sp.sqrt,
@@ -52,75 +39,42 @@ class FormulaToSymPy:
     }
 
     @classmethod
-    def convert(cls, expression: str, variable_names: list[str]) -> sp.Expr:
-        """
-        Convert a mathematical expression string to a SymPy symbolic expression.
-
-        Args:
-            expression: Mathematical expression string (e.g., "2 * x + 3 * y")
-            variable_names: List of variable names in the expression
-
-        Returns:
-            SymPy expression object
-
-        Raises:
-            ValueError: If the expression is invalid or contains unsupported operations
+    def convert(cls, expression: str, variable_names: list) -> sp.Expr:
+        """Convert a mathematical expression to SymPy.
         
-        Example:
-            >>> expr = FormulaToSymPy.convert("x**2 + y**2", ["x", "y"])
-            >>> print(expr)
-            x**2 + y**2
+        Args:
+            expression: Mathematical expression (e.g., "2 * x + 3 * y")
+            variable_names: List of variable names
+            
+        Returns:
+            SymPy expression
         """
         try:
-            # Parse the expression into an Abstract Syntax Tree
             tree = ast.parse(expression, mode='eval')
-
-            # Create SymPy symbols for all variables
             symbols = {name: sp.Symbol(name) for name in variable_names}
-
-            # Convert the AST to SymPy expression
             return cls._ast_to_sympy(tree.body, symbols)
-
         except (SyntaxError, TypeError) as e:
             raise ValueError(f"Invalid formula: {str(e)}")
 
     @classmethod
     def _ast_to_sympy(cls, node: ast.AST, symbols: Dict[str, sp.Symbol]) -> sp.Expr:
-        """Recursively convert AST nodes to SymPy expressions.
-        
-        Args:
-            node: The AST node to convert
-            symbols: Dict of variable names to SymPy symbols
-            
-        Returns:
-            SymPy expression
-            
-        Raises:
-            ValueError: If the node contains unsupported operations
-        """
+        """Recursively convert AST nodes to SymPy."""
         if isinstance(node, ast.Constant):
-            # Numbers and constants
             if isinstance(node.value, (int, float)):
                 return sp.sympify(node.value)
             else:
                 raise ValueError(f"Unsupported constant: {node.value}")
 
         elif isinstance(node, ast.Name):
-            # Variable names or constants
             if node.id in symbols:
                 return symbols[node.id]
             elif node.id in cls.SYMPY_FUNCTIONS:
-                # Return constant values for pi and e
                 value = cls.SYMPY_FUNCTIONS[node.id]
-                if callable(value):
-                    return value  # Will be used in function calls
-                else:
-                    return value  # pi or e
+                return value if not callable(value) else value
             else:
                 raise ValueError(f"Unknown variable: {node.id}")
 
         elif isinstance(node, ast.BinOp):
-            # Binary operations (e.g., x + y, a * b)
             left = cls._ast_to_sympy(node.left, symbols)
             right = cls._ast_to_sympy(node.right, symbols)
             op = cls.OPERATORS.get(type(node.op))
@@ -130,7 +84,6 @@ class FormulaToSymPy:
                 raise ValueError(f"Unsupported operator: {type(node.op).__name__}")
 
         elif isinstance(node, ast.UnaryOp):
-            # Unary operations (e.g., -x, +x)
             operand = cls._ast_to_sympy(node.operand, symbols)
             op = cls.OPERATORS.get(type(node.op))
             if op:
@@ -139,18 +92,13 @@ class FormulaToSymPy:
                 raise ValueError(f"Unsupported unary operator: {type(node.op).__name__}")
 
         elif isinstance(node, ast.Call):
-            # Function calls (e.g., sqrt(x), sin(y))
             if isinstance(node.func, ast.Name):
                 func_name = node.func.id
                 if func_name in cls.SYMPY_FUNCTIONS:
                     func = cls.SYMPY_FUNCTIONS[func_name]
                     args = [cls._ast_to_sympy(arg, symbols) for arg in node.args]
-                    
-                    # Handle special cases
                     if func_name in ['min', 'max', 'sum', 'len', 'round']:
-                        # These are not directly supported in symbolic differentiation
-                        raise ValueError(f"Function '{func_name}' is not supported for uncertainty calculation")
-                    
+                        raise ValueError(f"Function '{func_name}' not supported for uncertainty")
                     return func(*args)
                 else:
                     raise ValueError(f"Unsupported function: {func_name}")
@@ -158,15 +106,11 @@ class FormulaToSymPy:
                 raise ValueError("Complex function calls not supported")
 
         else:
-            raise ValueError(f"Unsupported expression element: {type(node).__name__}")
+            raise ValueError(f"Unsupported expression: {type(node).__name__}")
 
 
 class UncertaintyCalculator:
-    """Calculate combined uncertainty using partial derivatives.
-    
-    This class implements uncertainty propagation using the formula:
-        δf = sqrt(Σ(∂f/∂xᵢ * δxᵢ)²)
-    """
+    """Calculate combined uncertainty using partial derivatives."""
 
     @classmethod
     def calculate_uncertainty(
@@ -175,148 +119,58 @@ class UncertaintyCalculator:
         values: Dict[str, float],
         uncertainties: Dict[str, float]
     ) -> float:
-        """
-        Calculate the combined uncertainty of a formula.
-
-        Args:
-            expression: Mathematical expression string (e.g., "x * y")
-            values: Dict of variable names to their values
-            uncertainties: Dict of variable names to their uncertainties (standard deviations)
-
-        Returns:
-            Combined uncertainty (standard deviation) of the result
-
-        Raises:
-            ValueError: If the expression is invalid or variables are missing
+        """Calculate combined uncertainty of a formula.
         
-        Example:
-            >>> # Calculate uncertainty of area = length * width
-            >>> UncertaintyCalculator.calculate_uncertainty(
-            ...     "length * width",
-            ...     {"length": 10.0, "width": 5.0},
-            ...     {"length": 0.1, "width": 0.05}
-            ... )
-            0.7071...
+        Args:
+            expression: Mathematical expression
+            values: Variable values
+            uncertainties: Variable uncertainties
+            
+        Returns:
+            Combined uncertainty
         """
         try:
-            # Get variable names
             variable_names = list(values.keys())
-            
-            # Convert to SymPy expression
             sympy_expr = FormulaToSymPy.convert(expression, variable_names)
             
-            # Calculate partial derivatives and squared contributions
             variance_contributions = []
-            
             for var_name in variable_names:
                 if var_name not in uncertainties:
-                    # If no uncertainty specified, assume zero
                     continue
                 
-                # Get the SymPy symbol for this variable
                 var_symbol = sp.Symbol(var_name)
-                
-                # Calculate partial derivative ∂f/∂xᵢ
                 partial_derivative = sp.diff(sympy_expr, var_symbol)
                 
-                # Evaluate the partial derivative at the given values
                 subs_dict = {sp.Symbol(name): val for name, val in values.items()}
                 derivative_value = float(partial_derivative.evalf(subs=subs_dict))
                 
-                # Calculate contribution to variance: (∂f/∂xᵢ * δxᵢ)²
                 uncertainty_contribution = derivative_value * uncertainties[var_name]
                 variance_contributions.append(uncertainty_contribution ** 2)
             
-            # Combined uncertainty: sqrt(Σ(contributions²))
             combined_variance = sum(variance_contributions)
-            combined_uncertainty = combined_variance ** 0.5
-            
-            return combined_uncertainty
+            return combined_variance ** 0.5
             
         except Exception as e:
             raise ValueError(f"Error calculating uncertainty: {str(e)}")
-
-    # NOTE: Unit-aware calculation is not currently used and requires pint + formula_evaluator
-    # Commented out to avoid import errors. Can be re-enabled if needed.
-    #
-    # @classmethod
-    # def calculate_uncertainty_with_units(...):
-    #     """Calculate the combined uncertainty with unit support."""
-    #     ...
 
     @classmethod
     def get_partial_derivatives(
         cls,
         expression: str,
-        variable_names: list[str]
+        variable_names: list
     ) -> Dict[str, sp.Expr]:
-        """
-        Get symbolic partial derivatives of the expression with respect to each variable.
-
+        """Get symbolic partial derivatives.
+        
         Args:
-            expression: Mathematical expression string
+            expression: Mathematical expression
             variable_names: List of variable names
-
+            
         Returns:
-            Dict mapping variable names to their partial derivative expressions
-        
-        Example:
-            >>> derivs = UncertaintyCalculator.get_partial_derivatives(
-            ...     "x**2 + y**2",
-            ...     ["x", "y"]
-            ... )
-            >>> print(derivs["x"])
-            2*x
-            >>> print(derivs["y"])
-            2*y
+            Dict mapping variable names to partial derivatives
         """
-        # Convert to SymPy expression
         sympy_expr = FormulaToSymPy.convert(expression, variable_names)
-        
-        # Calculate partial derivatives
         derivatives = {}
         for var_name in variable_names:
             var_symbol = sp.Symbol(var_name)
             derivatives[var_name] = sp.diff(sympy_expr, var_symbol)
-        
         return derivatives
-
-    @classmethod
-    def get_uncertainty_formula(
-        cls,
-        expression: str,
-        variable_names: list[str]
-    ) -> str:
-        """
-        Get a human-readable formula for the uncertainty calculation.
-
-        Args:
-            expression: Mathematical expression string
-            variable_names: List of variable names
-
-        Returns:
-            String representation of the uncertainty formula
-        
-        Example:
-            >>> formula = UncertaintyCalculator.get_uncertainty_formula(
-            ...     "x * y",
-            ...     ["x", "y"]
-            ... )
-            >>> print(formula)
-            δf = sqrt((y*δx)² + (x*δy)²)
-        """
-        # Get partial derivatives
-        derivatives = cls.get_partial_derivatives(expression, variable_names)
-        
-        # Build uncertainty formula terms
-        terms = []
-        for var_name in variable_names:
-            deriv = derivatives[var_name]
-            # Simplify the derivative
-            deriv_simplified = sp.simplify(deriv)
-            terms.append(f"({deriv_simplified}*δ{var_name})²")
-        
-        # Combine into formula
-        formula = "δf = sqrt(" + " + ".join(terms) + ")"
-        
-        return formula
