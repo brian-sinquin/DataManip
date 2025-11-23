@@ -114,7 +114,7 @@ src/ui/widgets/
 - [ ] 407 legacy tests archived (review/migrate later)
 
 ### Feature Gaps (See PROJECT.md for details)
-- ⏸️ Statistics Widget (Phase 2B)
+- ✅ Statistics Widget (Phase 2B) - COMPLETE
 - ⏸️ Preferences Window (Phase 2C)
 - ⏸️ Undo/Redo (Phase 3)
 - ⏸️ Interpolation columns (Phase 3)

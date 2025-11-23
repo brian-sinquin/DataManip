@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from studies.data_table_study import ColumnType
-from .dialog_utils import show_warning, show_info
+from .shared.dialog_utils import show_warning, show_info
 
 
 class AddDataColumnDialog(QDialog):

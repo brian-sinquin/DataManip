@@ -16,7 +16,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction
 from typing import Dict, Any, Optional
 
-from .dialog_utils import show_warning, show_info, confirm_action
+from .shared.dialog_utils import show_warning, show_info, confirm_action
 
 
 class AddConstantDialog(QDialog):
