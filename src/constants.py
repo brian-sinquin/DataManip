@@ -85,6 +85,19 @@ PERCENTILE_Q50 = 50  # Median
 DISPLAY_PRECISION = 3
 
 # =============================================================================
+# Column Symbols
+# =============================================================================
+
+# Unicode symbols for visual column type identification
+COLUMN_SYMBOLS = {
+    "data": "✎",         # Pencil - editable
+    "calculated": "ƒ",   # Function symbol
+    "derivative": "d/dx", # Derivative notation
+    "range": "⋯",        # Range dots
+    "uncertainty": "δ",  # Delta - uncertainty
+}
+
+# =============================================================================
 # Application Metadata
 # =============================================================================
 
