@@ -17,7 +17,8 @@ from core.workspace import Workspace
 from core.study import Study
 from studies.data_table_study import DataTableStudy, ColumnType
 from studies.plot_study import PlotStudy
-from .widgets import DataTableWidget, ConstantsWidget
+from studies.statistics_study import StatisticsStudy
+from .widgets import DataTableWidget, ConstantsWidget, StatisticsWidget
 from .widgets.plot_widget import PlotWidget
 from .widgets.column_dialogs import CSVImportDialog
 
@@ -79,6 +80,11 @@ class MainWindow(QMainWindow):
         new_plot_action.setShortcut("Ctrl+P")
         new_plot_action.triggered.connect(self._new_plot)
         new_menu.addAction(new_plot_action)
+        
+        new_statistics_action = QAction("&Statistics", self)
+        new_statistics_action.setShortcut("Ctrl+S")
+        new_statistics_action.triggered.connect(self._new_statistics)
+        new_menu.addAction(new_statistics_action)
         
         new_menu.addSeparator()
         
@@ -299,6 +305,9 @@ class MainWindow(QMainWindow):
         elif isinstance(study, PlotStudy):
             widget = PlotWidget(study, self.workspace)
             self.study_tabs.addTab(widget, study.name)
+        elif isinstance(study, StatisticsStudy):
+            widget = StatisticsWidget(study, self)
+            self.study_tabs.addTab(widget, study.name)
     
     def _new_data_table(self):
         """Create new Data Table study."""
@@ -341,6 +350,48 @@ class MainWindow(QMainWindow):
             
             # Switch to new study
             self.study_tabs.setCurrentIndex(self.study_tabs.count() - 1)
+    
+    def _new_statistics(self):
+        """Create new Statistics study."""
+        # Get list of data table studies
+        data_tables = [s.name for s in self.workspace.studies.values() if isinstance(s, DataTableStudy)]
+        
+        if not data_tables:
+            QMessageBox.warning(
+                self,
+                "No Data Tables",
+                "Create a Data Table first to analyze."
+            )
+            return
+        
+        # Ask for study name
+        name, ok = QInputDialog.getText(
+            self,
+            "New Statistics",
+            "Statistics name:",
+            text=f"Statistics {len(self.workspace.studies) + 1}"
+        )
+        
+        if ok and name:
+            # Ask which data table to analyze
+            from PySide6.QtWidgets import QInputDialog as QID
+            source_table, ok = QID.getItem(
+                self,
+                "Select Data Source",
+                "Analyze data from:",
+                data_tables,
+                0,
+                False
+            )
+            
+            if ok and source_table:
+                # Create new Statistics study
+                study = StatisticsStudy(name, source_study=source_table, workspace=self.workspace)
+                
+                self._add_study(study)
+                
+                # Switch to new study
+                self.study_tabs.setCurrentIndex(self.study_tabs.count() - 1)
     
     def _new_variables_tab(self):
         """Create new Variables tab."""
