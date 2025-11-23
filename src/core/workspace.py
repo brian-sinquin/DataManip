@@ -39,6 +39,9 @@ class Workspace:
         # Workspace-level constants, variables, and functions
         # Format: {name: {"type": "constant|calculated|function", "value": ..., "unit": ..., "formula": ...}}
         self.constants: Dict[str, Dict[str, Any]] = {}
+        
+        # Version counter for cache invalidation (incremented on constant changes)
+        self._version: int = 0
     
     def add_study(self, study: Study):
         """Add study to workspace.
@@ -81,6 +84,7 @@ class Workspace:
             "value": value,
             "unit": unit
         }
+        self._version += 1
     
     def add_calculated_variable(self, name: str, formula: str, unit: Optional[str] = None):
         """Add calculated variable (formula-based).
@@ -96,6 +100,7 @@ class Workspace:
             "unit": unit,
             "value": None  # Will be calculated on demand
         }
+        self._version += 1
     
     def add_function(self, name: str, formula: str, parameters: List[str], unit: Optional[str] = None):
         """Add custom function.
@@ -112,6 +117,7 @@ class Workspace:
             "parameters": parameters,
             "unit": unit
         }
+        self._version += 1
     
     def remove_constant(self, name: str):
         """Remove constant/variable/function.
@@ -121,6 +127,7 @@ class Workspace:
         """
         if name in self.constants:
             del self.constants[name]
+            self._version += 1
     
     def get_constant_info(self, name: str) -> Optional[Dict[str, Any]]:
         """Get constant information.

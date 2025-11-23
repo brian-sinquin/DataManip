@@ -182,3 +182,71 @@ class TestFormulaValidation:
         valid, error = engine.validate_formula("{x} +", ["x"])
         assert valid is False
         assert "Syntax error" in error
+
+
+class TestVariableRenaming:
+    """Test variable renaming in formulas."""
+    
+    def test_rename_dependency(self):
+        """Test renaming a variable that is a dependency."""
+        engine = FormulaEngine()
+        
+        # Register formula that depends on 'x'
+        engine.register_formula("y", "{x} * 2")
+        
+        # Rename x to x_new
+        engine.rename_variable("x", "x_new")
+        
+        # Check that dependency was updated
+        deps = engine.get_dependencies("y")
+        assert "x_new" in deps
+        assert "x" not in deps
+    
+    def test_rename_target(self):
+        """Test renaming a variable that is a target."""
+        engine = FormulaEngine()
+        
+        # Register formula with 'old_col' as target
+        engine.register_formula("old_col", "{x} + {y}")
+        
+        # Rename old_col to new_col
+        engine.rename_variable("old_col", "new_col")
+        
+        # Check that target was renamed
+        assert "new_col" in engine._dependencies
+        assert "old_col" not in engine._dependencies
+        assert engine.get_dependencies("new_col") == {"x", "y"}
+    
+    def test_rename_multiple_dependencies(self):
+        """Test renaming a variable used in multiple formulas."""
+        engine = FormulaEngine()
+        
+        # Register multiple formulas that depend on 'x'
+        engine.register_formula("y", "{x} * 2")
+        engine.register_formula("z", "{x} + {y}")
+        engine.register_formula("w", "{x} / 3")
+        
+        # Rename x to x_renamed
+        engine.rename_variable("x", "x_renamed")
+        
+        # Check that all dependencies were updated
+        assert "x_renamed" in engine.get_dependencies("y")
+        assert "x_renamed" in engine.get_dependencies("z")
+        assert "x_renamed" in engine.get_dependencies("w")
+        assert "x" not in engine.get_dependencies("y")
+        assert "x" not in engine.get_dependencies("z")
+        assert "x" not in engine.get_dependencies("w")
+    
+    def test_rename_preserves_other_dependencies(self):
+        """Test that renaming preserves other dependencies."""
+        engine = FormulaEngine()
+        
+        # Register formula with multiple dependencies
+        engine.register_formula("result", "{x} + {y} + {z}")
+        
+        # Rename only x
+        engine.rename_variable("x", "x_new")
+        
+        # Check that all dependencies are correct
+        deps = engine.get_dependencies("result")
+        assert deps == {"x_new", "y", "z"}

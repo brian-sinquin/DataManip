@@ -6,10 +6,11 @@ and uncertainty tracking.
 """
 
 from __future__ import annotations
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 import pandas as pd
 import numpy as np
 import sympy as sp
+import concurrent.futures
 
 from core.study import Study
 from core.data_object import DataObject
@@ -65,10 +66,73 @@ class DataTableStudy(Study):
         
         # Formula engine
         self.formula_engine = FormulaEngine()
+        
+        # Dirty flag tracking for lazy evaluation
+        self._dirty_columns: set = set()
+        self._dependency_graph: Dict[str, set] = {}  # col -> dependents
+        self._auto_recalc: bool = True  # Auto-recalc on data changes
     
     def get_type(self) -> str:
         """Get study type identifier."""
         return "data_table"
+    
+    # ========================================================================
+    # Dirty Flag Tracking & Dependencies
+    # ========================================================================
+    
+    def mark_dirty(self, column_name: str):
+        """Mark column and its dependents as dirty."""
+        if column_name not in self.table.data.columns:
+            return
+        
+        # Mark this column
+        self._dirty_columns.add(column_name)
+        
+        # Mark all dependents recursively
+        to_mark = [column_name]
+        while to_mark:
+            col = to_mark.pop()
+            if col in self._dependency_graph:
+                for dependent in self._dependency_graph[col]:
+                    if dependent not in self._dirty_columns:
+                        self._dirty_columns.add(dependent)
+                        to_mark.append(dependent)
+    
+    def mark_clean(self, column_name: str):
+        """Mark column as clean after recalculation."""
+        self._dirty_columns.discard(column_name)
+    
+    def is_dirty(self, column_name: str) -> bool:
+        """Check if column needs recalculation."""
+        return column_name in self._dirty_columns
+    
+    def get_dirty_columns(self) -> set:
+        """Get all dirty columns."""
+        return self._dirty_columns.copy()
+    
+    def _add_dependency(self, column: str, depends_on: str):
+        """Register that column depends on depends_on."""
+        if depends_on not in self._dependency_graph:
+            self._dependency_graph[depends_on] = set()
+        self._dependency_graph[depends_on].add(column)
+    
+    def _remove_dependency(self, column: str):
+        """Remove all dependencies for column."""
+        for deps in self._dependency_graph.values():
+            deps.discard(column)
+        self._dependency_graph.pop(column, None)
+    
+    def _update_dependencies(self, col_name: str, formula: Optional[str]):
+        """Update dependency graph when column formula changes."""
+        # Remove old dependencies
+        self._remove_dependency(col_name)
+        
+        # Add new dependencies
+        if formula:
+            deps = self.formula_engine.extract_dependencies(formula)
+            for dep in deps:
+                if dep in self.table.data.columns:
+                    self._add_dependency(col_name, dep)
     
     # ========================================================================
     # Column Management
@@ -141,8 +205,13 @@ class DataTableStudy(Study):
         # Handle by type
         if column_type == ColumnType.CALCULATED and formula:
             self.formula_engine.register_formula(name, formula)
+            self._update_dependencies(name, formula)
             if len(self.table.data) > 0:
-                self._recalculate_column(name)
+                if self._auto_recalc:
+                    self._recalculate_column(name)
+                else:
+                    # Mark dirty if not auto-recalculating (batch mode)
+                    self.mark_dirty(name)
             
             # Auto-create uncertainty column if requested
             if propagate_uncertainty:
@@ -162,6 +231,49 @@ class DataTableStudy(Study):
                 self._calculate_derivative(name)
         elif column_type == ColumnType.RANGE:
             self._generate_range(name)
+    
+    def add_columns_batch(self, columns: List[Dict[str, Any]]) -> List[str]:
+        """Add multiple columns in one batch operation.
+        
+        Args:
+            columns: List of dicts with keys: name, column_type, formula, 
+                    initial_data, unit, uncertainty_formula, etc.
+        
+        Returns:
+            List of added column names
+        """
+        added = []
+        
+        # Disable auto-recalculation during batch
+        auto_recalc = self._auto_recalc
+        self._auto_recalc = False
+        
+        try:
+            for col_spec in columns:
+                name = col_spec.get('name')
+                if not name:
+                    continue
+                
+                col_type = col_spec.get('column_type', ColumnType.DATA)
+                formula = col_spec.get('formula')
+                initial_data = col_spec.get('initial_data')
+                unit = col_spec.get('unit', '')
+                
+                # Add column without auto-recalc
+                self.add_column(
+                    name, col_type, formula, initial_data, unit
+                )
+                added.append(name)
+        
+        finally:
+            # Re-enable auto-recalc
+            self._auto_recalc = auto_recalc
+            
+            # Recalculate all dirty columns once
+            if auto_recalc:
+                self._recalculate_dirty_columns()
+        
+        return added
     
     def remove_column(self, name: str):
         """Remove column from table.
@@ -449,154 +561,48 @@ class DataTableStudy(Study):
             print(f"Warning: Uncertainty calculation failed for {name}: {e}")
             return pd.Series([np.nan] * len(self.table.data))
     
-    def _recalculate_column(self, name: str):
+    def _recalculate_column(self, name: str, context: Optional[Dict[str, Any]] = None):
         """Recalculate a formula column.
         
         Args:
             name: Column name
+            context: Optional pre-built context (for lazy recalculation)
         """
+        # Skip if not dirty and auto-recalc disabled
+        if not self._auto_recalc and not self.is_dirty(name):
+            return
+        
         formula = self.get_column_formula(name)
         if not formula:
             return
         
-        # Build evaluation context
-        context = {}
+        # Build or use provided context
+        if context is None:
+            context = {}
         
-        # Add all data columns (convert Series to numpy arrays for cleaner evaluation)
-        for col_name in self.table.columns:
-            col_data = self.table.get_column(col_name)
-            # Convert to numpy array, replacing None with nan
-            if isinstance(col_data, pd.Series):
-                arr = col_data.values
-                # Convert None to nan for proper numeric operations
-                arr = np.where(pd.isna(arr), np.nan, arr).astype(float)
-                context[col_name] = arr
-            else:
-                context[col_name] = col_data
-        
-        # Add constants and functions from workspace
-        if self.workspace:
-            # First pass: collect all constant definitions
-            const_defs = {}
-            for const_name, const_data in self.workspace.constants.items():
-                const_type = const_data.get("type")
-                const_defs[const_name] = (const_type, const_data)
+            # Add all data columns (convert Series to numpy arrays for cleaner evaluation)
+            for col_name in self.table.columns:
+                col_data = self.table.get_column(col_name)
+                # Convert to numpy array, replacing None with nan
+                if isinstance(col_data, pd.Series):
+                    arr = col_data.values
+                    # Convert None to nan for proper numeric operations
+                    arr = np.where(pd.isna(arr), np.nan, arr).astype(float)
+                    context[col_name] = arr
+                else:
+                    context[col_name] = col_data
             
-            # Helper to recursively evaluate calculated constants
-            def evaluate_constant(name, visited=None):
-                if visited is None:
-                    visited = set()
-                
-                # Check for circular dependency
-                if name in visited:
-                    raise ValueError(f"Circular dependency detected in calculated constant: {name}")
-                
-                # Return cached value if already computed
-                if name in context:
-                    return context[name]
-                
-                if name not in const_defs:
-                    return None
-                
-                const_type, const_data = const_defs[name]
-                
-                if const_type == "constant":
-                    # Numeric constant
-                    context[name] = const_data["value"]
-                    return context[name]
-                
-                elif const_type == "calculated":
-                    # Calculated constant - need to evaluate its formula
-                    calc_formula = const_data["formula"]
-                    
-                    # Add to visited to detect circular refs
-                    visited = visited.copy()  # Use a copy for this branch
-                    visited.add(name)
-                    
-                    # Build context for evaluation - include other constants
-                    calc_context = {}
-                    
-                    # Add numpy functions
-                    calc_context['np'] = np
-                    calc_context['pd'] = pd
-                    calc_context.update({
-                        'sqrt': np.sqrt,
-                        'sin': np.sin,
-                        'cos': np.cos,
-                        'tan': np.tan,
-                        'exp': np.exp,
-                        'log': np.log,
-                        'log10': np.log10,
-                        'abs': np.abs,
-                        'pi': np.pi,
-                        'e': np.e,
-                        'arcsin': np.arcsin,
-                        'arccos': np.arccos,
-                        'arctan': np.arctan,
-                    })
-                    
-                    # Add only the constants that are dependencies (already evaluated)
-                    # OR recursively evaluate constants on-demand
-                    for other_name in const_defs:
-                        if other_name != name and other_name not in visited:
-                            # Only evaluate if not in visited (avoids circular ref)
-                            val = evaluate_constant(other_name, visited)
-                            if val is not None:
-                                calc_context[other_name] = val
-                    
-                    # Evaluate the calculated constant
-                    try:
-                        result = eval(calc_formula, {"__builtins__": {}}, calc_context)
-                        context[name] = result
-                        return result
-                    except Exception as e:
-                        print(f"Warning: Failed to evaluate calculated constant {name}: {e}")
-                        return None
-                
-                elif const_type == "function":
-                    # Custom function - convert to callable
-                    func_formula = const_data["formula"]
-                    func_params = const_data["parameters"]
-                    
-                    # Create a Python function that evaluates the formula
-                    def make_function(formula_str, params):
-                        def custom_func(*args):
-                            # Build context for function evaluation
-                            func_context = dict(zip(params, args))
-                            # Add numpy functions
-                            func_context['np'] = np
-                            func_context['pd'] = pd
-                            func_context.update({
-                                'sqrt': np.sqrt,
-                                'sin': np.sin,
-                                'cos': np.cos,
-                                'tan': np.tan,
-                                'exp': np.exp,
-                                'log': np.log,
-                                'log10': np.log10,
-                                'abs': np.abs,
-                                'pi': np.pi,
-                                'e': np.e,
-                                'arcsin': np.arcsin,
-                                'arccos': np.arccos,
-                                'arctan': np.arctan,
-                            })
-                            # Replace {param} with param in formula
-                            eval_formula = formula_str
-                            for param in params:
-                                eval_formula = eval_formula.replace(f"{{{param}}}", param)
-                            # Evaluate
-                            return eval(eval_formula, {"__builtins__": {}}, func_context)
-                        return custom_func
-                    
-                    context[name] = make_function(func_formula, func_params)
-                    return context[name]
-                
-                return None
+            # Build complete context including workspace constants
+            workspace_constants = self.workspace.constants if self.workspace else None
+            workspace_id = id(self.workspace) if self.workspace else None
+            workspace_version = self.workspace._version if self.workspace else 0
             
-            # Evaluate all constants
-            for const_name in const_defs:
-                evaluate_constant(const_name)
+            context = self.formula_engine.build_context_with_workspace(
+                context, 
+                workspace_constants,
+                workspace_id=workspace_id,
+                workspace_version=workspace_version
+            )
         
         # Evaluate formula
         try:
@@ -611,6 +617,134 @@ class DataTableStudy(Study):
             result = pd.Series(result)
         
         self.table.set_column(name, result)
+        
+        # Mark as clean after successful calculation
+        self.mark_clean(name)
+        
+        # Mark as clean after successful calculation
+        self.mark_clean(name)
+    
+    def _recalculate_dirty_columns(self):
+        """Recalculate only dirty columns, parallelizing independent ones."""
+        dirty = self.get_dirty_columns()
+        if not dirty:
+            return
+        
+        # Build dependency levels for parallel execution
+        levels = self._get_dependency_levels(dirty)
+        
+        # Build context once (reused for all columns)
+        # Skip dirty columns since they'll be calculated
+        context = {}
+        for col_name in self.table.columns:
+            if col_name in dirty:
+                continue  # Skip dirty columns
+            
+            col_data = self.table.get_column(col_name)
+            if isinstance(col_data, pd.Series):
+                arr = col_data.values
+                arr = np.where(pd.isna(arr), np.nan, arr).astype(float)
+                context[col_name] = arr
+            else:
+                context[col_name] = col_data
+        
+        workspace_constants = self.workspace.constants if self.workspace else None
+        workspace_id = id(self.workspace) if self.workspace else None
+        workspace_version = self.workspace._version if self.workspace else 0
+        
+        context = self.formula_engine.build_context_with_workspace(
+            context, workspace_constants, workspace_id, workspace_version
+        )
+        
+        # Process each level (can parallelize within level)
+        for level_cols in levels:
+            if len(level_cols) == 1:
+                # Single column - evaluate with shared context
+                self._recalculate_column(level_cols[0], context)
+                # Update context with new column data
+                col_data = self.table.get_column(level_cols[0])
+                if isinstance(col_data, pd.Series):
+                    context[level_cols[0]] = col_data.values
+            else:
+                # Multiple independent columns - evaluate in parallel
+                self._evaluate_columns_parallel(level_cols, context)
+    
+    def _evaluate_columns_parallel(self, columns: List[str], base_context: Dict[str, Any]):
+        """Evaluate multiple independent columns in parallel."""
+        formulas_to_eval = []
+        col_names = []
+        
+        for col in columns:
+            if col not in self.column_metadata:
+                continue
+            metadata = self.column_metadata[col]
+            if metadata.get("type") == ColumnType.CALCULATED and metadata.get("formula"):
+                formulas_to_eval.append((metadata["formula"], base_context.copy()))
+                col_names.append(col)
+        
+        if not formulas_to_eval:
+            return
+        
+        # Evaluate in parallel (limit to 4 workers for CPU-bound tasks)
+        max_workers = min(4, len(formulas_to_eval))
+        
+        if max_workers > 1 and len(formulas_to_eval) > 1:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = [
+                    executor.submit(self.formula_engine.evaluate, formula, ctx)
+                    for formula, ctx in formulas_to_eval
+                ]
+                results = [f.result() for f in futures]
+        else:
+            # Single column or small batch - evaluate sequentially
+            results = [self.formula_engine.evaluate(f, c) for f, c in formulas_to_eval]
+        
+        # Store results
+        for col_name, result in zip(col_names, results):
+            if result is not None:
+                if not isinstance(result, pd.Series):
+                    result = pd.Series(result)
+                self.table.set_column(col_name, result)
+                self.mark_clean(col_name)
+                # Update base context for next level
+                base_context[col_name] = result.values
+    
+    def _get_dependency_levels(self, columns: set) -> List[List[str]]:
+        """Group columns into dependency levels for parallel execution."""
+        levels = []
+        remaining = columns.copy()
+        
+        while remaining:
+            # Find columns with no dependencies in remaining set
+            current_level = []
+            for col in list(remaining):
+                if col not in self.column_metadata:
+                    remaining.remove(col)
+                    continue
+                
+                metadata = self.column_metadata[col]
+                formula = metadata.get("formula")
+                
+                if not formula:
+                    current_level.append(col)
+                    continue
+                
+                deps = self.formula_engine.extract_dependencies(formula)
+                deps_in_remaining = [d for d in deps if d in remaining and d != col]
+                
+                if not deps_in_remaining:
+                    current_level.append(col)
+            
+            if not current_level:
+                # Circular dependency - break it
+                current_level = [remaining.pop()]
+            else:
+                for col in current_level:
+                    remaining.discard(col)
+            
+            levels.append(current_level)
+        
+        return levels
     
     def recalculate_all(self):
         """Recalculate all formula and derivative columns in dependency order."""
