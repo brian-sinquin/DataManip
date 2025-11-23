@@ -476,13 +476,83 @@ class DataTableStudy(Study):
         
         # Add constants and functions from workspace
         if self.workspace:
+            # First pass: collect all constant definitions
+            const_defs = {}
             for const_name, const_data in self.workspace.constants.items():
                 const_type = const_data.get("type")
+                const_defs[const_name] = (const_type, const_data)
+            
+            # Helper to recursively evaluate calculated constants
+            def evaluate_constant(name, visited=None):
+                if visited is None:
+                    visited = set()
+                
+                # Check for circular dependency
+                if name in visited:
+                    raise ValueError(f"Circular dependency detected in calculated constant: {name}")
+                
+                # Return cached value if already computed
+                if name in context:
+                    return context[name]
+                
+                if name not in const_defs:
+                    return None
+                
+                const_type, const_data = const_defs[name]
                 
                 if const_type == "constant":
                     # Numeric constant
-                    context[const_name] = const_data["value"]
+                    context[name] = const_data["value"]
+                    return context[name]
+                
+                elif const_type == "calculated":
+                    # Calculated constant - need to evaluate its formula
+                    calc_formula = const_data["formula"]
                     
+                    # Add to visited to detect circular refs
+                    visited = visited.copy()  # Use a copy for this branch
+                    visited.add(name)
+                    
+                    # Build context for evaluation - include other constants
+                    calc_context = {}
+                    
+                    # Add numpy functions
+                    calc_context['np'] = np
+                    calc_context['pd'] = pd
+                    calc_context.update({
+                        'sqrt': np.sqrt,
+                        'sin': np.sin,
+                        'cos': np.cos,
+                        'tan': np.tan,
+                        'exp': np.exp,
+                        'log': np.log,
+                        'log10': np.log10,
+                        'abs': np.abs,
+                        'pi': np.pi,
+                        'e': np.e,
+                        'arcsin': np.arcsin,
+                        'arccos': np.arccos,
+                        'arctan': np.arctan,
+                    })
+                    
+                    # Add only the constants that are dependencies (already evaluated)
+                    # OR recursively evaluate constants on-demand
+                    for other_name in const_defs:
+                        if other_name != name and other_name not in visited:
+                            # Only evaluate if not in visited (avoids circular ref)
+                            val = evaluate_constant(other_name, visited)
+                            if val is not None:
+                                calc_context[other_name] = val
+                    
+                    # Evaluate the calculated constant
+                    try:
+                        result = eval(calc_formula, {"__builtins__": {}}, calc_context)
+                        context[name] = result
+                        return result
+                    except Exception as e:
+                        print(f"Warning: Failed to evaluate calculated constant {name}: {e}")
+                        return None
+                
                 elif const_type == "function":
                     # Custom function - convert to callable
                     func_formula = const_data["formula"]
@@ -519,7 +589,14 @@ class DataTableStudy(Study):
                             return eval(eval_formula, {"__builtins__": {}}, func_context)
                         return custom_func
                     
-                    context[const_name] = make_function(func_formula, func_params)
+                    context[name] = make_function(func_formula, func_params)
+                    return context[name]
+                
+                return None
+            
+            # Evaluate all constants
+            for const_name in const_defs:
+                evaluate_constant(const_name)
         
         # Evaluate formula
         try:

@@ -16,7 +16,9 @@
 - **StatisticsWidget UI** - Histogram + box plot visualizations
 - **25 Unit Tests** - Comprehensive test coverage for statistics calculations
 - **Menu Integration** - File > New > Statistics (Ctrl+S)
-- **135/135 Tests Passing** - No regressions
+- **Custom Functions Bug Fix** - Functions now work in calculated columns
+- **Calculated Constants Feature** - Formula-based constants with dependency resolution
+- **145/145 Tests Passing** - No regressions (140 + 5 calculated constants tests)
 
 ### Documentation Unification ✅
 - **PROJECT.md** - Now includes rebase comparison, legacy analysis, architecture, features, testing, roadmap
@@ -102,9 +104,9 @@ src/ui/widgets/
 ## Known Issues 🐛
 
 ### Testing Status ✅
-- ✅ 140/140 tests passing (100%) 
+- ✅ 145/145 tests passing (100%) 
 - ✅ Core layer fully tested (53/53)
-- ✅ Studies layer fully tested (76/76) - includes 25 StatisticsStudy + 5 custom functions tests
+- ✅ Studies layer fully tested (81/81) - includes 25 StatisticsStudy + 5 custom functions + 5 calculated constants tests
 - ✅ UI layer tested (2/2)
 
 ### Code Quality Issues 🟡
