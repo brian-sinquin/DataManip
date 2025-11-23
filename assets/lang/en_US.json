@@ -14,6 +14,12 @@
   "file": {
     "new": "&New",
     "new_tip": "Create a new file",
+    "new_table": "Data &Table",
+    "new_table_tip": "Create a new data table",
+    "new_plot": "&Plot",
+    "new_plot_tip": "Create a new plot",
+    "new_statistics": "&Statistics",
+    "new_statistics_tip": "Create a new statistics study",
     "open": "&Open...",
     "open_tip": "Open an existing file",
     "save": "&Save",

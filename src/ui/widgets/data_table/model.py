@@ -78,8 +78,17 @@ class DataTableModel(QAbstractTableModel):
         
         # Check if column is editable
         col_type = self.study.get_column_type(col_name)
-        if col_type != ColumnType.DATA:
-            return False  # Can't edit calculated columns
+        if col_type == ColumnType.DATA:
+            pass  # Always editable
+        elif col_type == ColumnType.UNCERTAINTY:
+            # Only manual uncertainty columns are editable
+            col_meta = self.study.column_metadata.get(col_name, {})
+            ref_col = col_meta.get("uncertainty_reference")
+            if ref_col and ref_col in self.study.column_metadata:
+                if self.study.column_metadata[ref_col].get("propagate_uncertainty", False):
+                    return False  # Auto-propagated uncertainty - not editable
+        else:
+            return False  # Can't edit calculated/derivative/range columns
         
         # Convert and set value
         try:
@@ -88,7 +97,34 @@ class DataTableModel(QAbstractTableModel):
             else:
                 value = float(value)
             
-            self.study.table.data.iloc[index.row(), index.column()] = value
+            # Track undo for data edits
+            row = index.row()
+            col = index.column()
+            old_value = self.study.table.data.iloc[row, col]
+            
+            # Only track if value actually changed
+            if old_value != value:
+                from core.undo_manager import UndoAction, ActionType
+                
+                def undo_edit():
+                    self.study.table.data.iloc[row, col] = old_value
+                    self.study.on_data_changed(col_name)
+                    emit_full_model_update(self)
+                
+                def redo_edit():
+                    self.study.table.data.iloc[row, col] = value
+                    self.study.on_data_changed(col_name)
+                    emit_full_model_update(self)
+                
+                action = UndoAction(
+                    action_type=ActionType.MODIFY_DATA,
+                    undo_func=undo_edit,
+                    redo_func=redo_edit,
+                    description=f"Edit cell [{row+1}, {col_name}]"
+                )
+                self.study.undo_manager.push(action)
+            
+            self.study.table.data.iloc[row, col] = value
             
             # Trigger recalculation
             self.study.on_data_changed(col_name)
@@ -158,6 +194,25 @@ class DataTableModel(QAbstractTableModel):
                 elif col_type == "range":
                     range_type = col_meta.get("range_type", "")
                     tooltip += f"\nRange type: {range_type}"
+                elif col_type == "uncertainty":
+                    ref_col = col_meta.get("uncertainty_reference")
+                    if ref_col:
+                        tooltip += f"\nUncertainty for: {ref_col}"
+                        # Show propagated formula if auto-created
+                        if ref_col in self.study.column_metadata:
+                            ref_meta = self.study.column_metadata[ref_col]
+                            if ref_meta.get("propagate_uncertainty"):
+                                formula = ref_meta.get("formula", "")
+                                if formula:
+                                    tooltip += f"\n\nPropagated from: {formula}"
+                                    # Try to show simplified formula
+                                    try:
+                                        deps = self.study.formula_engine.extract_dependencies(formula)
+                                        has_uncert = [d for d in deps if f"{d}_u" in self.study.table.columns]
+                                        if has_uncert:
+                                            tooltip += f"\nContributions from: {', '.join([f'δ{d}' for d in has_uncert])}"
+                                    except:
+                                        pass
                 
                 unit = self.study.get_column_unit(col_name)
                 if unit:
@@ -184,8 +239,21 @@ class DataTableModel(QAbstractTableModel):
         
         flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable  # type: ignore
         
-        # Only data columns are editable
+        # Data columns are always editable
+        # Uncertainty columns are editable only if manually created (not auto-propagated)
         if col_type == ColumnType.DATA:
             flags |= Qt.ItemIsEditable  # type: ignore
+        elif col_type == ColumnType.UNCERTAINTY:
+            # Check if this is an auto-propagated uncertainty column
+            col_meta = self.study.column_metadata.get(col_name, {})
+            ref_col = col_meta.get("uncertainty_reference")
+            # If referenced column has propagate_uncertainty=True, this is auto-created
+            if ref_col and ref_col in self.study.column_metadata:
+                if not self.study.column_metadata[ref_col].get("propagate_uncertainty", False):
+                    # Manual uncertainty column - editable
+                    flags |= Qt.ItemIsEditable  # type: ignore
+            else:
+                # No reference or orphaned - treat as manual, editable
+                flags |= Qt.ItemIsEditable  # type: ignore
         
         return flags

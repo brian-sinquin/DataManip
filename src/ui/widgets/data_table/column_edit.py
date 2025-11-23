@@ -2,8 +2,11 @@
 
 from studies.data_table_study import ColumnType
 from ..shared import show_warning
-from ..column_dialogs import AddCalculatedColumnDialog, EditDataColumnDialog
-from ..column_dialogs_extended import AddDerivativeColumnDialog, AddRangeColumnDialog
+from ..column_dialogs import AddCalculatedColumnDialog
+from ..column_dialogs_extended import (
+    AddDerivativeColumnDialog, AddRangeColumnDialog,
+    EditDataColumnDialog, EditUncertaintyColumnDialog
+)
 
 
 def edit_column_properties(widget, col_index: int):
@@ -29,6 +32,8 @@ def edit_column_properties(widget, col_index: int):
         _edit_derivative_column(widget, col_name)
     elif col_type == ColumnType.RANGE:
         _edit_range_column(widget, col_name)
+    elif col_type == ColumnType.UNCERTAINTY:
+        _edit_uncertainty_column(widget, col_name)
 
 
 def _edit_data_column(widget, col_name: str):
@@ -99,15 +104,84 @@ def _edit_calculated_column(widget, col_name: str):
     if unit:
         dialog.unit_edit.setText(unit)
     
+    # Pre-fill uncertainty propagation status
+    propagate_unc = col_meta.get("propagate_uncertainty", False)
+    dialog.uncertainty_checkbox.setChecked(propagate_unc)
+    
     if dialog.exec():
-        _, new_formula, new_unit, _ = dialog.get_values()
+        _, new_formula, new_unit, new_propagate_unc = dialog.get_values()
+        
+        old_propagate_unc = col_meta.get("propagate_uncertainty", False)
+        uncert_name = f"{col_name}_u"
         
         # Update formula and unit
         widget.study.column_metadata[col_name]["formula"] = new_formula
         widget.study.column_metadata[col_name]["unit"] = new_unit
+        widget.study.column_metadata[col_name]["propagate_uncertainty"] = new_propagate_unc
         widget.study.formula_engine.register_formula(col_name, new_formula)
         
+        # Handle uncertainty propagation changes
+        if new_propagate_unc and not old_propagate_unc:
+            # Enable uncertainty propagation - create uncertainty column if missing
+            if uncert_name not in widget.study.table.columns:
+                from studies.data_table_study import ColumnType
+                uncert_values = widget.study._calculate_propagated_uncertainty(col_name)
+                widget.study.add_column(
+                    uncert_name,
+                    column_type=ColumnType.UNCERTAINTY,
+                    unit=new_unit,
+                    initial_data=uncert_values,
+                    uncertainty_reference=col_name
+                )
+        elif not new_propagate_unc and old_propagate_unc:
+            # Disable uncertainty propagation - optionally remove uncertainty column
+            if uncert_name in widget.study.table.columns:
+                from ..shared import confirm_action
+                if confirm_action(
+                    widget, 
+                    "Remove Uncertainty Column?",
+                    f"Remove auto-created uncertainty column '{uncert_name}'?"
+                ):
+                    widget.study.remove_column(uncert_name)
+        
         # Recalculate
+        widget._refresh_table()
+
+
+def _edit_uncertainty_column(widget, col_name: str):
+    """Edit uncertainty column properties.
+    
+    Args:
+        widget: DataTableWidget instance
+        col_name: Column name
+    """
+    col_meta = widget.study.column_metadata.get(col_name, {})
+    current_unit = col_meta.get("unit")
+    ref_col = col_meta.get("uncertainty_reference")
+    
+    # Get available columns to reference
+    from studies.data_table_study import ColumnType
+    available_cols = [
+        c for c in widget.study.table.columns
+        if widget.study.get_column_type(c) in [ColumnType.DATA, ColumnType.CALCULATED]
+    ]
+    
+    from ..column_dialogs_extended import EditUncertaintyColumnDialog
+    dialog = EditUncertaintyColumnDialog(col_name, current_unit, ref_col, available_cols, widget)
+    
+    if dialog.exec():
+        new_name, new_unit, new_ref_col = dialog.get_values()
+        
+        # Rename if changed
+        if new_name and new_name != col_name:
+            widget.study.rename_column(col_name, new_name)
+            col_name = new_name
+        
+        # Update unit and reference
+        widget.study.column_metadata[col_name]["unit"] = new_unit
+        widget.study.column_metadata[col_name]["uncertainty_reference"] = new_ref_col if new_ref_col else None
+        
+        # Refresh table
         widget._refresh_table()
 
 
@@ -151,14 +225,15 @@ def _edit_derivative_column(widget, col_name: str):
         dialog.unit_edit.setText(unit)
     
     if dialog.exec():
-        values = dialog.get_values()
+        # get_values() returns tuple: (name, y_col, x_col, order, unit)
+        _, y_col, x_col, order, unit = dialog.get_values()
         
         # Update metadata (use correct metadata keys)
         widget.study.column_metadata[col_name].update({
-            "derivative_of": values["y_column"],  # Map to correct key
-            "with_respect_to": values["x_column"],  # Map to correct key
-            "order": values["order"],
-            "unit": values["unit"]
+            "derivative_of": y_col,
+            "with_respect_to": x_col,
+            "order": order,
+            "unit": unit
         })
         
         # Recalculate derivative

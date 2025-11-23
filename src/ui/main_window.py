@@ -15,6 +15,7 @@ import numpy as np
 
 from .preferences_dialog import PreferencesDialog
 from .notification_manager import NotificationManager, ProgressNotification
+from utils.lang import tr
 from constants import (
     MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT,
     APP_NAME, APP_VERSION, APP_DESCRIPTION
@@ -81,23 +82,26 @@ class MainWindow(QMainWindow):
         menubar = self.menuBar()
         
         # File menu
-        file_menu = menubar.addMenu("&File")
+        file_menu = menubar.addMenu(tr("menu.file", "&File"))
         
         # New submenu
-        new_menu = file_menu.addMenu("&New")
+        new_menu = file_menu.addMenu(tr("file.new", "&New"))
         
-        new_table_action = QAction("Data &Table", self)
+        new_table_action = QAction(tr("file.new_table", "Data &Table"), self)
         new_table_action.setShortcut("Ctrl+T")
+        new_table_action.setToolTip(tr("file.new_table_tip", "Create a new data table"))
         new_table_action.triggered.connect(self._new_data_table)
         new_menu.addAction(new_table_action)
         
-        new_plot_action = QAction("&Plot", self)
+        new_plot_action = QAction(tr("file.new_plot", "&Plot"), self)
         new_plot_action.setShortcut("Ctrl+P")
+        new_plot_action.setToolTip(tr("file.new_plot_tip", "Create a new plot"))
         new_plot_action.triggered.connect(self._new_plot)
         new_menu.addAction(new_plot_action)
         
-        new_statistics_action = QAction("&Statistics", self)
+        new_statistics_action = QAction(tr("file.new_statistics", "&Statistics"), self)
         new_statistics_action.setShortcut("Ctrl+S")
+        new_statistics_action.setToolTip(tr("file.new_statistics_tip", "Create a new statistics study"))
         new_statistics_action.triggered.connect(self._new_statistics)
         new_menu.addAction(new_statistics_action)
         
@@ -235,79 +239,149 @@ class MainWindow(QMainWindow):
     
     def _create_default_study(self):
         """Create default DataTable study with comprehensive examples."""
-        # Initialize workspace constants
+        # Initialize workspace constants - physics and calculated values
         self.workspace.add_constant("g", 9.81, "m/s^2")
         self.workspace.add_constant("pi", 3.14159265359, None)
+        self.workspace.add_constant("air_density", 1.225, "kg/m^3")
+        self.workspace.add_constant("mass", 0.145, "kg")  # Baseball mass
+        self.workspace.add_constant("Cd", 0.47, None)  # Sphere drag coefficient
         
-        study = DataTableStudy("Physics Demo", workspace=self.workspace)
+        # Calculated constant - cross-sectional area
+        self.workspace.add_calculated_variable(
+            "area",
+            "pi * (0.037)**2",  # Baseball radius ~3.7 cm (no braces for workspace formulas)
+            "m^2"
+        )
         
-        # Example: Free fall motion demonstrating all column types
-        # 1. RANGE column - generate time points
+        study = DataTableStudy("Baseball Trajectory Analysis", workspace=self.workspace)
+        
+        # Comprehensive example: Baseball trajectory with all features
+        
+        # 1. RANGE column - time sequence
         study.add_column(
             "time",
             ColumnType.RANGE,
             unit="s",
             range_type="linspace",
             range_start=0.0,
-            range_stop=3.0,
-            range_count=13
+            range_stop=4.0,
+            range_count=41
         )
         
-        # 2. DATA columns with uncertainties
-        study.add_column("h0", ColumnType.DATA, 
-                        initial_data=np.full(13, 50.0), 
-                        unit="m")
-        study.add_column("h0_u", ColumnType.DATA, 
-                        initial_data=np.full(13, 0.5), 
-                        unit="m")
+        # 2. DATA columns - initial conditions with manual uncertainties
+        study.add_column("v0", ColumnType.DATA, 
+                        initial_data=np.full(41, 45.0), 
+                        unit="m/s")
+        study.add_column("v0_u", ColumnType.UNCERTAINTY, 
+                        initial_data=np.full(41, 1.0), 
+                        unit="m/s",
+                        uncertainty_reference="v0")
         
-        # 3. CALCULATED column - position with uncertainty propagation
+        study.add_column("angle", ColumnType.DATA, 
+                        initial_data=np.full(41, 30.0), 
+                        unit="deg")
+        study.add_column("angle_u", ColumnType.UNCERTAINTY, 
+                        initial_data=np.full(41, 2.0), 
+                        unit="deg",
+                        uncertainty_reference="angle")
+        
+        # 3. CALCULATED columns - velocity components using constants
         study.add_column(
-            "height",
+            "vx",
             ColumnType.CALCULATED,
-            formula="{h0} - 0.5 * 9.81 * {time}**2",
-            unit="m",
-            propagate_uncertainty=True  # Auto-creates height_u column
+            formula="{v0} * np.cos({angle} * {pi} / 180)",
+            unit="m/s",
+            propagate_uncertainty=True
         )
         
-        # 4. DERIVATIVE column - velocity (derivative of height)
         study.add_column(
-            "velocity",
-            ColumnType.DERIVATIVE,
-            derivative_of="height",
-            with_respect_to="time",
+            "vy",
+            ColumnType.CALCULATED,
+            formula="{v0} * np.sin({angle} * {pi} / 180) - {g} * {time}",
+            unit="m/s",
+            propagate_uncertainty=True
+        )
+        
+        # 4. CALCULATED columns - position trajectories
+        study.add_column(
+            "x",
+            ColumnType.CALCULATED,
+            formula="{vx} * {time}",
+            unit="m",
+            propagate_uncertainty=True
+        )
+        
+        study.add_column(
+            "y",
+            ColumnType.CALCULATED,
+            formula="{v0} * np.sin({angle} * {pi} / 180) * {time} - 0.5 * {g} * {time}**2",
+            unit="m",
+            propagate_uncertainty=True
+        )
+        
+        # 5. CALCULATED column - instantaneous speed
+        study.add_column(
+            "speed",
+            ColumnType.CALCULATED,
+            formula="np.sqrt({vx}**2 + {vy}**2)",
             unit="m/s"
         )
         
-        # 5. CALCULATED column - kinetic energy
-        study.add_column(
-            "mass",
-            ColumnType.DATA,
-            initial_data=np.full(13, 2.0),
-            unit="kg"
-        )
-        
+        # 6. CALCULATED column - kinetic energy using constant
         study.add_column(
             "KE",
             ColumnType.CALCULATED,
-            formula="0.5 * {mass} * {velocity}**2",
+            formula="0.5 * {mass} * {speed}**2",
             unit="J"
         )
         
-        # 6. CALCULATED column - potential energy
+        # 7. CALCULATED column - potential energy
         study.add_column(
             "PE",
             ColumnType.CALCULATED,
-            formula="{mass} * 9.81 * {height}",
+            formula="{mass} * {g} * np.maximum({y}, 0)",  # max to avoid negative height
             unit="J"
         )
         
-        # 7. CALCULATED column - total energy
+        # 8. CALCULATED column - total mechanical energy
         study.add_column(
-            "total_energy",
+            "E_total",
             ColumnType.CALCULATED,
             formula="{KE} + {PE}",
             unit="J"
+        )
+        
+        # 9. DERIVATIVE columns - acceleration
+        study.add_column(
+            "ax",
+            ColumnType.DERIVATIVE,
+            derivative_of="vx",
+            with_respect_to="time",
+            unit="m/s^2"
+        )
+        
+        study.add_column(
+            "ay",
+            ColumnType.DERIVATIVE,
+            derivative_of="vy",
+            with_respect_to="time",
+            unit="m/s^2"
+        )
+        
+        # 10. CALCULATED column - trajectory angle
+        study.add_column(
+            "trajectory_angle",
+            ColumnType.CALCULATED,
+            formula="np.arctan2({vy}, {vx}) * 180 / {pi}",
+            unit="deg"
+        )
+        
+        # 11. CALCULATED column - distance from origin
+        study.add_column(
+            "distance",
+            ColumnType.CALCULATED,
+            formula="np.sqrt({x}**2 + {y}**2)",
+            unit="m"
         )
         
         self._add_study(study)
@@ -1114,9 +1188,9 @@ class MainWindow(QMainWindow):
                     undo_mgr.undo()
                     self.notifications.show_info(f"Undone: {description}")
                     
-                    # Refresh widget if it has a refresh method
-                    if hasattr(widget, 'refresh'):
-                        widget.refresh()
+                    # Update model display (no full recalculation needed)
+                    if hasattr(widget, 'model'):
+                        widget.model.layoutChanged.emit()
                     
                     # Update undo/redo state
                     self._on_tab_changed(self.study_tabs.currentIndex())
@@ -1136,9 +1210,9 @@ class MainWindow(QMainWindow):
                     undo_mgr.redo()
                     self.notifications.show_info(f"Redone: {description}")
                     
-                    # Refresh widget if it has a refresh method
-                    if hasattr(widget, 'refresh'):
-                        widget.refresh()
+                    # Update model display (no full recalculation needed)
+                    if hasattr(widget, 'model'):
+                        widget.model.layoutChanged.emit()
                     
                     # Update undo/redo state
                     self._on_tab_changed(self.study_tabs.currentIndex())

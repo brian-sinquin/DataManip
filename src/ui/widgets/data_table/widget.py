@@ -106,6 +106,10 @@ class DataTableWidget(QWidget):
         add_data_col.triggered.connect(lambda: self._add_column(ColumnType.DATA))
         add_data_col.setShortcut("Ctrl+Shift+D")
         
+        add_uncert_col = add_column_menu.addAction("δ Uncertainty Column")
+        add_uncert_col.triggered.connect(lambda: self._add_column(ColumnType.UNCERTAINTY))
+        add_uncert_col.setShortcut("Ctrl+Shift+U")
+        
         add_calc_col = add_column_menu.addAction("ƒ Calculated Column (Formula)")
         add_calc_col.triggered.connect(lambda: self._add_column(ColumnType.CALCULATED))
         add_calc_col.setShortcut("Ctrl+Shift+C")
@@ -122,6 +126,13 @@ class DataTableWidget(QWidget):
         toolbar.addSeparator()
         
         # View operations
+        self.show_uncertainty_action = QAction("Hide Uncertainty Columns", self)
+        self.show_uncertainty_action.setCheckable(True)
+        self.show_uncertainty_action.setChecked(False)  # False = show, True = hide
+        self.show_uncertainty_action.setToolTip("Toggle visibility of uncertainty (δ) columns")
+        self.show_uncertainty_action.triggered.connect(self._toggle_uncertainty_columns)
+        toolbar.addAction(self.show_uncertainty_action)
+        
         auto_resize_action = QAction("Auto-resize Columns", self)
         auto_resize_action.setToolTip("Automatically resize all columns to fit content")
         auto_resize_action.triggered.connect(self._auto_resize_columns)
@@ -171,15 +182,32 @@ class DataTableWidget(QWidget):
             if width < 60:
                 self.view.setColumnWidth(col, 60)
     
+    def _toggle_uncertainty_columns(self):
+        """Toggle visibility of uncertainty columns."""
+        hide = self.show_uncertainty_action.isChecked()
+        
+        # Update action text
+        if hide:
+            self.show_uncertainty_action.setText("Show Uncertainty Columns")
+        else:
+            self.show_uncertainty_action.setText("Hide Uncertainty Columns")
+        
+        # Hide/show columns
+        for col_idx, col_name in enumerate(self.study.table.columns):
+            col_type = self.study.get_column_type(col_name)
+            if col_type == ColumnType.UNCERTAINTY:
+                self.view.setColumnHidden(col_idx, hide)
+    
     def _add_column(self, col_type: str):
         """Add column to table.
         
         Args:
-            col_type: Column type (DATA, CALCULATED, DERIVATIVE, RANGE)
+            col_type: Column type (DATA, CALCULATED, DERIVATIVE, RANGE, UNCERTAINTY)
         """
         if col_type == ColumnType.DATA:
             self._add_data_column()
-        
+        elif col_type == ColumnType.UNCERTAINTY:
+            self._add_uncertainty_column()
         elif col_type == ColumnType.CALCULATED:
             self._add_calculated_column()
         
@@ -267,6 +295,30 @@ class DataTableWidget(QWidget):
                 self.model.layoutChanged.emit()
             except Exception as e:
                 show_error(self, "Error", f"Failed to add column: {str(e)}")
+    
+    def _add_uncertainty_column(self):
+        """Add manual UNCERTAINTY column."""
+        # Get available data/calculated columns to reference
+        available_cols = [
+            c for c in self.study.table.columns
+            if self.study.get_column_type(c) in [ColumnType.DATA, ColumnType.CALCULATED]
+        ]
+        
+        from ..column_dialogs import AddUncertaintyColumnDialog
+        dialog = AddUncertaintyColumnDialog(available_cols, self)
+        if dialog.exec():
+            name, unit, ref_col = dialog.get_values()
+            
+            if not validate_column_name(self, name, self.study.table.columns):
+                return
+            
+            self.study.add_column(
+                name,
+                ColumnType.UNCERTAINTY,
+                unit=unit,
+                uncertainty_reference=ref_col if ref_col else None
+            )
+            self.model.layoutChanged.emit()
     
     def _add_range_column(self):
         """Add RANGE column."""

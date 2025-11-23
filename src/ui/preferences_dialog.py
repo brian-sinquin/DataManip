@@ -90,6 +90,38 @@ class PreferencesDialog(QDialog):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         
+        # Language group
+        language_group = QGroupBox("Language")
+        language_layout = QFormLayout()
+        
+        self.language_combo = QComboBox()
+        
+        # Try to get language manager, initialize if needed
+        try:
+            from utils.lang import get_lang_manager, get_current_language
+            lang_manager = get_lang_manager()
+            available_langs = lang_manager.get_available_languages()
+            current_lang = get_current_language()
+            
+            for lang_code in available_langs:
+                lang_name = lang_manager.get_language_name(lang_code)
+                self.language_combo.addItem(lang_name, lang_code)
+                if lang_code == current_lang:
+                    self.language_combo.setCurrentText(lang_name)
+        except Exception:
+            # Language system not initialized (e.g., in tests)
+            self.language_combo.addItem("English (US)", "en_US")
+            self.language_combo.setCurrentIndex(0)
+        
+        language_layout.addRow("Language:", self.language_combo)
+        language_info = QLabel("Changes will be applied immediately to menus and dialogs.")
+        language_info.setWordWrap(True)
+        language_info.setStyleSheet("color: #666; font-size: 10px;")
+        language_layout.addRow("", language_info)
+        
+        language_group.setLayout(language_layout)
+        layout.addWidget(language_group)
+        
         # Auto-save group
         autosave_group = QGroupBox("Auto-Save")
         autosave_layout = QFormLayout()
@@ -366,6 +398,7 @@ class PreferencesDialog(QDialog):
     def _collect_values(self):
         """Collect values from UI controls into settings."""
         # General
+        self.settings["language"] = self.language_combo.currentData()
         self.settings["autosave_enabled"] = self.autosave_enabled.isChecked()
         self.settings["autosave_interval"] = self.autosave_interval.value()
         self.settings["restore_session"] = self.restore_session.isChecked()
@@ -394,6 +427,16 @@ class PreferencesDialog(QDialog):
     def _apply_settings(self):
         """Apply settings without closing dialog."""
         self._collect_values()
+        
+        # Apply language change immediately (if language system available)
+        try:
+            from utils.lang import get_current_language, set_language
+            new_lang = self.settings.get("language", "en_US")
+            if new_lang != get_current_language():
+                set_language(new_lang)
+        except Exception:
+            pass  # Language system not available
+        
         self._save_settings()
         self.settings_changed.emit(self.settings)
         
@@ -402,12 +445,22 @@ class PreferencesDialog(QDialog):
             QMessageBox.information(
                 self,
                 "Settings Applied",
-                "Preferences have been applied.\nSome changes may require restart."
+                "Preferences have been applied.\nLanguage changes take effect immediately."
             )
     
     def _accept_settings(self):
         """Apply settings and close dialog."""
         self._collect_values()
+        
+        # Apply language change immediately (if language system available)
+        try:
+            from utils.lang import get_current_language, set_language
+            new_lang = self.settings.get("language", "en_US")
+            if new_lang != get_current_language():
+                set_language(new_lang)
+        except Exception:
+            pass  # Language system not available
+        
         self._save_settings()
         self.settings_changed.emit(self.settings)
         self.accept()

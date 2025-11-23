@@ -14,6 +14,12 @@
   "file": {
     "new": "&Nouveau",
     "new_tip": "Créer un nouveau fichier",
+    "new_table": "&Tableau de Données",
+    "new_table_tip": "Créer un nouveau tableau de données",
+    "new_plot": "&Graphique",
+    "new_plot_tip": "Créer un nouveau graphique",
+    "new_statistics": "&Statistiques",
+    "new_statistics_tip": "Créer une nouvelle étude statistique",
     "open": "&Ouvrir...",
     "open_tip": "Ouvrir un fichier existant",
     "save": "&Enregistrer",

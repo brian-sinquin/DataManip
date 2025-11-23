@@ -8,19 +8,26 @@ and uncertainty propagation.
 from __future__ import annotations
 from typing import Any, Dict, Optional, Set
 import re
+import logging
 import numpy as np
 import pandas as pd
 from sympy import sympify, symbols
 from sympy.parsing.sympy_parser import parse_expr, standard_transformations, implicit_multiplication_application
 import pint
 
+from core.exceptions import (
+    FormulaError,
+    FormulaSyntaxError,
+    FormulaEvaluationError,
+    CircularDependencyError,
+    MissingDependencyError
+)
+
 # Initialize unit registry
 ureg = pint.UnitRegistry()
 
-
-class FormulaError(Exception):
-    """Formula evaluation error."""
-    pass
+# Setup logger
+logger = logging.getLogger(__name__)
 
 
 class FormulaEngine:
@@ -67,6 +74,22 @@ class FormulaEngine:
             'arcsin': np.arcsin,
             'arccos': np.arccos,
             'arctan': np.arctan,
+            # Array aggregate functions
+            'len': len,
+            'sum': np.sum,
+            'mean': np.mean,
+            'min': np.min,
+            'max': np.max,
+            'std': np.std,
+            'median': np.median,
+            'var': np.var,
+            'cumsum': np.cumsum,
+            'cumprod': np.cumprod,
+            'diff': np.diff,
+            'round': np.round,
+            'floor': np.floor,
+            'ceil': np.ceil,
+            'sign': np.sign,
         }
     
     def evaluate_constant(
@@ -94,74 +117,114 @@ class FormulaEngine:
         Raises:
             ValueError: If circular dependency detected
         """
-        if visited is None:
-            visited = set()
-        
         # Return cached value if already computed
         if const_name in context:
             return context[const_name]
         
         const_type = const_data.get("type")
         
-        # Fast path for numeric constants - no visited check needed
+        # Fast path for numeric constants
         if const_type == "constant":
             value = const_data["value"]
             context[const_name] = value
             return value
         
-        # Check for circular dependency for calculated/function types
+        # Initialize visited set for circular dependency detection
+        if visited is None:
+            visited = set()
+        
+        # Check for circular dependency
         if const_name in visited:
-            raise ValueError(f"Circular dependency detected in calculated constant: {const_name}")
+            raise ValueError(f"Circular dependency detected: {const_name}")
+        
+        # Add to visited set
+        visited = visited.copy()
+        visited.add(const_name)
         
         if const_type == "calculated":
-            # Calculated constant - evaluate formula
-            calc_formula = const_data["formula"]
-            
-            # Add to visited to detect circular refs
-            visited = visited.copy()
-            visited.add(const_name)
-            
-            # Build evaluation context from current context
-            # All dependencies should already be evaluated by caller
-            calc_context = self._math_functions.copy()
-            calc_context.update(context)
-            
-            # Evaluate the formula
-            try:
-                result = eval(calc_formula, {"__builtins__": {}}, calc_context)
-                context[const_name] = result
-                return result
-            except Exception as e:
-                # Debug warning for developers - constant evaluation failed
-                if not suppress_warnings:
-                    print(f"Warning: Failed to evaluate calculated constant {const_name}: {e}")
-                return None
+            return self._evaluate_calculated_constant(
+                const_name, const_data, context, suppress_warnings
+            )
         
         elif const_type == "function":
-            # Custom function - convert to callable
-            func_formula = const_data["formula"]
-            func_params = const_data["parameters"]
-            
-            def make_function(formula_str, params, math_funcs):
-                def custom_func(*args):
-                    # Build context for function evaluation
-                    func_context = dict(zip(params, args))
-                    func_context.update(math_funcs)
-                    
-                    # Replace {param} with param in formula
-                    eval_formula = formula_str
-                    for param in params:
-                        eval_formula = eval_formula.replace(f"{{{param}}}", param)
-                    
-                    # Evaluate
-                    return eval(eval_formula, {"__builtins__": {}}, func_context)
-                return custom_func
-            
-            func = make_function(func_formula, func_params, self._math_functions)
-            context[const_name] = func
-            return func
+            return self._evaluate_function_constant(
+                const_name, const_data, context
+            )
         
         return None
+    
+    def _evaluate_calculated_constant(
+        self,
+        const_name: str,
+        const_data: Dict[str, Any],
+        context: Dict[str, Any],
+        suppress_warnings: bool
+    ) -> Any:
+        """Evaluate a calculated constant.
+        
+        Args:
+            const_name: Constant name
+            const_data: Constant data dictionary
+            context: Evaluation context
+            suppress_warnings: Whether to suppress warnings
+            
+        Returns:
+            Evaluated value or None on error
+        """
+        calc_formula = const_data["formula"]
+        
+        # Build evaluation context
+        calc_context = self._math_functions.copy()
+        calc_context.update(context)
+        
+        # Evaluate the formula
+        try:
+            result = eval(calc_formula, {"__builtins__": {}}, calc_context)
+            context[const_name] = result
+            return result
+        except Exception as e:
+            if not suppress_warnings:
+                logger.warning(f"Failed to evaluate calculated constant '{const_name}': {e}")
+            return None
+    
+    def _evaluate_function_constant(
+        self,
+        const_name: str,
+        const_data: Dict[str, Any],
+        context: Dict[str, Any]
+    ) -> Any:
+        """Evaluate a function constant.
+        
+        Args:
+            const_name: Constant name
+            const_data: Constant data dictionary
+            context: Evaluation context
+            
+        Returns:
+            Callable function
+        """
+        func_formula = const_data["formula"]
+        func_params = const_data["parameters"]
+        
+        # Replace {param} placeholders with param names
+        eval_formula = func_formula
+        for param in func_params:
+            eval_formula = eval_formula.replace(f"{{{param}}}", param)
+        
+        # Create closure that captures formula and parameters
+        def make_function(formula_str, params, math_funcs):
+            def custom_function(*args):
+                if len(args) != len(params):
+                    raise ValueError(f"Expected {len(params)} arguments, got {len(args)}")
+                func_context = math_funcs.copy()
+                for param, value in zip(params, args):
+                    func_context[param] = value
+                return eval(formula_str, {"__builtins__": {}}, func_context)
+            return custom_function
+        
+        func = make_function(eval_formula, func_params, self._math_functions)
+        context[const_name] = func
+        return func
     
     def build_context_with_workspace(
         self,

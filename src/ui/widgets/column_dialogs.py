@@ -63,6 +63,82 @@ class AddDataColumnDialog(QDialog):
         return name, unit
 
 
+class AddUncertaintyColumnDialog(QDialog):
+    """Dialog for adding an uncertainty column."""
+    
+    def __init__(self, available_columns, parent=None):
+        """Initialize dialog.
+        
+        Args:
+            available_columns: List of available column names to reference
+            parent: Parent widget
+        """
+        super().__init__(parent)
+        
+        self.available_columns = available_columns
+        
+        self.setWindowTitle("Add Uncertainty Column")
+        self.setModal(True)
+        self.resize(400, 250)
+        
+        # Setup UI
+        layout = QVBoxLayout(self)
+        
+        # Description
+        desc = QLabel(
+            "Create a column for manual uncertainty values.\n"
+            "For automatic uncertainty propagation, use the checkbox\n"
+            "in the Calculated Column dialog instead."
+        )
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+        
+        # Form
+        form = QFormLayout()
+        
+        self.name_edit = QLineEdit()
+        self.name_edit.setPlaceholderText("e.g., velocity_u, mass_u")
+        form.addRow("Column Name:", self.name_edit)
+        
+        self.unit_edit = QLineEdit()
+        self.unit_edit.setPlaceholderText("e.g., m/s, kg")
+        form.addRow("Unit (optional):", self.unit_edit)
+        
+        self.reference_combo = QComboBox()
+        self.reference_combo.addItem("(none)", None)
+        for col in available_columns:
+            self.reference_combo.addItem(col, col)
+        form.addRow("References column:", self.reference_combo)
+        
+        layout.addLayout(form)
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_btn)
+        
+        ok_btn = QPushButton("OK")
+        ok_btn.setDefault(True)
+        ok_btn.clicked.connect(self.accept)
+        button_layout.addWidget(ok_btn)
+        
+        layout.addLayout(button_layout)
+    
+    def get_values(self):
+        """Get dialog values.
+        
+        Returns:
+            Tuple of (name, unit, reference_column)
+        """
+        name = self.name_edit.text().strip()
+        unit = self.unit_edit.text().strip() or None
+        ref_col = self.reference_combo.currentData()
+        return name, unit, ref_col
+
+
 class AddCalculatedColumnDialog(QDialog):
     """Dialog for adding a calculated column."""
     
@@ -122,9 +198,11 @@ class AddCalculatedColumnDialog(QDialog):
         # Uncertainty propagation
         self.uncertainty_checkbox = QCheckBox("Automatically propagate uncertainty")
         self.uncertainty_checkbox.setToolTip(
-            "When enabled, an uncertainty column (δname) will be automatically created\n"
-            "using symbolic differentiation: δf = √(Σ(∂f/∂xᵢ · δxᵢ)²)\n\n"
-            "Requires uncertainty columns ([name]_u) for dependencies."
+            "Auto-creates uncertainty column: [name]_u\n\n"
+            "Uses symbolic differentiation: δf = √(Σ(∂f/∂xᵢ · δxᵢ)²)\n\n"
+            "Requires uncertainty columns ([var]_u) for each variable.\n"
+            "Example: If formula uses {mass} and {velocity},\n"
+            "you need mass_u and velocity_u columns."
         )
         layout.addWidget(self.uncertainty_checkbox)
         

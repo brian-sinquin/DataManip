@@ -277,3 +277,147 @@ class AddRangeColumnDialog(QDialog):
             result["step"] = self.step_spin.value()
         
         return result
+
+
+class EditDataColumnDialog(QDialog):
+    """Dialog for editing a data column."""
+    
+    def __init__(self, col_name, current_unit, parent=None):
+        """Initialize dialog.
+        
+        Args:
+            col_name: Current column name
+            current_unit: Current unit
+            parent: Parent widget
+        """
+        super().__init__(parent)
+        
+        self.setWindowTitle(f"Edit Data Column: {col_name}")
+        self.setModal(True)
+        self.resize(400, 200)
+        
+        # Setup UI
+        layout = QVBoxLayout(self)
+        
+        # Form
+        form = QFormLayout()
+        
+        self.name_edit = QLineEdit()
+        self.name_edit.setText(col_name)
+        form.addRow("Column Name:", self.name_edit)
+        
+        self.unit_edit = QLineEdit()
+        self.unit_edit.setPlaceholderText("e.g., m, s, kg, m/s^2")
+        if current_unit:
+            self.unit_edit.setText(current_unit)
+        form.addRow("Unit (optional):", self.unit_edit)
+        
+        layout.addLayout(form)
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_btn)
+        
+        ok_btn = QPushButton("OK")
+        ok_btn.setDefault(True)
+        ok_btn.clicked.connect(self.accept)
+        button_layout.addWidget(ok_btn)
+        
+        layout.addLayout(button_layout)
+    
+    def get_values(self):
+        """Get dialog values.
+        
+        Returns:
+            Tuple of (name, unit)
+        """
+        name = self.name_edit.text().strip()
+        unit = self.unit_edit.text().strip() or None
+        return name, unit
+
+
+class EditUncertaintyColumnDialog(QDialog):
+    """Dialog for editing an uncertainty column."""
+    
+    def __init__(self, col_name, current_unit, current_ref, available_columns, parent=None):
+        """Initialize dialog.
+        
+        Args:
+            col_name: Current column name
+            current_unit: Current unit
+            current_ref: Current reference column
+            available_columns: List of available columns to reference
+            parent: Parent widget
+        """
+        super().__init__(parent)
+        
+        self.setWindowTitle(f"Edit Uncertainty Column: {col_name}")
+        self.setModal(True)
+        self.resize(400, 250)
+        
+        # Setup UI
+        layout = QVBoxLayout(self)
+        
+        # Description
+        desc = QLabel(
+            "Edit manual uncertainty column properties.\n"
+            "Auto-propagated uncertainty columns cannot change their reference."
+        )
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+        
+        # Form
+        form = QFormLayout()
+        
+        self.name_edit = QLineEdit()
+        self.name_edit.setText(col_name)
+        form.addRow("Column Name:", self.name_edit)
+        
+        self.unit_edit = QLineEdit()
+        self.unit_edit.setPlaceholderText("e.g., m, s, kg, m/s^2")
+        if current_unit:
+            self.unit_edit.setText(current_unit)
+        form.addRow("Unit (optional):", self.unit_edit)
+        
+        self.reference_combo = QComboBox()
+        self.reference_combo.addItem("(none)", None)
+        for col in available_columns:
+            self.reference_combo.addItem(col, col)
+        # Set current reference
+        if current_ref:
+            idx = self.reference_combo.findData(current_ref)
+            if idx >= 0:
+                self.reference_combo.setCurrentIndex(idx)
+        form.addRow("References column:", self.reference_combo)
+        
+        layout.addLayout(form)
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_btn)
+        
+        ok_btn = QPushButton("OK")
+        ok_btn.setDefault(True)
+        ok_btn.clicked.connect(self.accept)
+        button_layout.addWidget(ok_btn)
+        
+        layout.addLayout(button_layout)
+    
+    def get_values(self):
+        """Get dialog values.
+        
+        Returns:
+            Tuple of (name, unit, reference_column)
+        """
+        name = self.name_edit.text().strip()
+        unit = self.unit_edit.text().strip() or None
+        ref_col = self.reference_combo.currentData()
+        return name, unit, ref_col

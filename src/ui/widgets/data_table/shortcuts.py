@@ -137,9 +137,15 @@ def _paste_tsv(widget, tsv_data: str, start_row: int, start_col: int):
         start_col: Starting column
     """
     from studies.data_table_study import ColumnType
+    from core.undo_manager import UndoAction, ActionType
     
     lines = tsv_data.strip().split('\n')
     errors = []
+    
+    # Track old values for undo
+    old_values = {}
+    new_values = {}
+    affected_columns = set()
     
     for row_offset, line in enumerate(lines):
         values = line.split('\t')
@@ -161,21 +167,55 @@ def _paste_tsv(widget, tsv_data: str, start_row: int, start_col: int):
                 if col_type != ColumnType.DATA:
                     continue
             
+            # Save old value for undo
+            old_val = widget.study.table.data.iloc[target_row, target_col]
+            old_values[(target_row, target_col, col_name)] = old_val
+            affected_columns.add(col_name)
+            
             # Set value
             try:
                 if value.strip() == "":
-                    widget.study.table.data.loc[target_row, col_name] = pd.NA
+                    new_val = pd.NA
                 else:
                     # Try to convert to appropriate type
                     try:
-                        widget.study.table.data.loc[target_row, col_name] = float(value)
+                        new_val = float(value)
                     except ValueError:
-                        widget.study.table.data.loc[target_row, col_name] = value
+                        new_val = value
+                
+                widget.study.table.data.loc[target_row, col_name] = new_val
+                new_values[(target_row, target_col, col_name)] = new_val
             except Exception as e:
                 errors.append(f"Row {target_row}, Col {col_name}: {str(e)}")
     
+    # Create undo action for paste
+    if old_values:
+        def undo_paste():
+            for (row, col, col_name), old_val in old_values.items():
+                widget.study.table.data.iloc[row, col] = old_val
+            for col_name in affected_columns:
+                widget.study.on_data_changed(col_name)
+            widget.model.layoutChanged.emit()
+        
+        def redo_paste():
+            for (row, col, col_name), new_val in new_values.items():
+                widget.study.table.data.loc[row, col_name] = new_val
+            for col_name in affected_columns:
+                widget.study.on_data_changed(col_name)
+            widget.model.layoutChanged.emit()
+        
+        cell_count = len(old_values)
+        action = UndoAction(
+            action_type=ActionType.MODIFY_DATA,
+            undo_func=undo_paste,
+            redo_func=redo_paste,
+            description=f"Paste {cell_count} cell{'s' if cell_count > 1 else ''}"
+        )
+        widget.study.undo_manager.push(action)
+    
     # Recalculate formulas
-    widget.study.recalculate_all()
+    for col_name in affected_columns:
+        widget.study.on_data_changed(col_name)
     
     # Refresh view
     widget.model.layoutChanged.emit()  # type: ignore
@@ -201,10 +241,15 @@ def _on_delete(widget):
         widget: DataTableWidget instance
     """
     from studies.data_table_study import ColumnType
+    from core.undo_manager import UndoAction, ActionType
     
     selection = _get_selected_cells(widget)
     if not selection:
         return
+    
+    # Track old values for undo
+    old_values = {}
+    affected_columns = set()
     
     # Clear selected cells
     for row, col in selection:
@@ -219,10 +264,41 @@ def _on_delete(widget):
             if col_type != ColumnType.DATA:
                 continue
         
-        # Clear value
+        # Save old value for undo
         if row < len(widget.study.table.data):
+            old_val = widget.study.table.data.iloc[row, col]
+            old_values[(row, col, col_name)] = old_val
+            affected_columns.add(col_name)
+            
+            # Clear value
             widget.study.table.data.loc[row, col_name] = pd.NA
     
+    # Create undo action for delete
+    if old_values:
+        def undo_delete():
+            for (row, col, col_name), old_val in old_values.items():
+                widget.study.table.data.iloc[row, col] = old_val
+            for col_name in affected_columns:
+                widget.study.on_data_changed(col_name)
+            widget.model.layoutChanged.emit()
+        
+        def redo_delete():
+            for (row, col, col_name), _ in old_values.items():
+                widget.study.table.data.loc[row, col_name] = pd.NA
+            for col_name in affected_columns:
+                widget.study.on_data_changed(col_name)
+            widget.model.layoutChanged.emit()
+        
+        cell_count = len(old_values)
+        action = UndoAction(
+            action_type=ActionType.MODIFY_DATA,
+            undo_func=undo_delete,
+            redo_func=redo_delete,
+            description=f"Delete {cell_count} cell{'s' if cell_count > 1 else ''}"
+        )
+        widget.study.undo_manager.push(action)
+    
     # Recalculate and refresh
-    widget.study.recalculate_all()
+    for col_name in affected_columns:
+        widget.study.on_data_changed(col_name)
     widget.model.layoutChanged.emit()  # type: ignore
