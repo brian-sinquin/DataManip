@@ -230,17 +230,17 @@ class DataTableWidget(QWidget):
     
     def _add_derivative_column(self):
         """Add DERIVATIVE column."""
-        # Get available data columns (not calculated/derivative)
+        # Get available columns for differentiation (data, calculated, range)
         data_cols = [
             c for c in self.study.table.columns 
-            if self.study.get_column_type(c) in [ColumnType.DATA, ColumnType.RANGE]
+            if self.study.get_column_type(c) in [ColumnType.DATA, ColumnType.CALCULATED, ColumnType.RANGE]
         ]
         
         if len(data_cols) < 2:
             show_warning(
                 self, 
                 "Error", 
-                "Need at least 2 data/range columns to create derivative"
+                "Need at least 2 columns (data/calculated/range) to create derivative"
             )
             return
         

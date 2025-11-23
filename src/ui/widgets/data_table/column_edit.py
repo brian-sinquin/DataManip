@@ -118,14 +118,14 @@ def _edit_derivative_column(widget, col_name: str):
         widget: DataTableWidget instance
         col_name: Column name
     """
-    # Get data columns
+    # Get columns available for differentiation (data, calculated, range)
     data_cols = [
         c for c in widget.study.table.columns
-        if widget.study.get_column_type(c) == ColumnType.DATA
+        if widget.study.get_column_type(c) in [ColumnType.DATA, ColumnType.CALCULATED, ColumnType.RANGE]
     ]
     
     if len(data_cols) < 2:
-        show_warning(widget, "Edit Derivative", "Need at least 2 data columns for derivative")
+        show_warning(widget, "Edit Derivative", "Need at least 2 columns (data/calculated/range) for derivative")
         return
     
     dialog = AddDerivativeColumnDialog(data_cols, widget)
