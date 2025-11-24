@@ -1,11 +1,12 @@
 # DataManip
 
 [![Tests](https://github.com/brian-sinquin/DataManip/actions/workflows/tests.yml/badge.svg)](https://github.com/brian-sinquin/DataManip/actions/workflows/tests.yml)
-[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](RELEASE_NOTES.md)
+[![codecov](https://codecov.io/gh/brian-sinquin/DataManip/graph/badge.svg?token=JFNKIFNNTS)](https://codecov.io/gh/brian-sinquin/DataManip)
+[![PyPI version](https://img.shields.io/pypi/v/datamanip.svg)](https://pypi.org/project/datamanip/)
 [![Python](https://img.shields.io/badge/python-3.12+-green.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-orange.svg)](LICENSE)
 
-An open-source data manipulation software for experimental sciences
+A powerful, user-friendly data manipulation application for experimental sciences. Perform calculations with formulas, units, uncertainty propagation, derivatives, and visualization—all in one place.
 
 **[📖 Release Notes](RELEASE_NOTES.md)** | **[🗺️ Roadmap](ROADMAP.md)** | **[🤝 Contributing](CONTRIBUTING.md)**
 
@@ -14,25 +15,39 @@ An open-source data manipulation software for experimental sciences
 ## ✨ Key Features
 
 - **5 Column Types**: Data, Calculated, Derivative, Range, Uncertainty
-- **Formula Engine**: NumPy functions, custom functions, unit-aware calculations
-- **Plotting with Error Bars**: Multiple series, X/Y uncertainties, statistics (histogram/box plot), image export
-- **Workspace Management**: Save/load complete workspaces, atomic file operations
+- **Formula Engine**: NumPy functions, custom functions, unit-aware calculations (pint)
+- **Automatic Uncertainty Propagation**: Symbolic differentiation with SymPy
+- **High Performance**: 3x speedup with lazy evaluation, caching, and parallel execution
+- **Plotting with Error Bars**: Multiple series, X/Y uncertainties, statistics (histogram/box plot)
+- **Workspace Management**: Save/load complete workspaces with all studies
 - **Undo/Redo**: 50-step history for column operations
-- **Constants System**: Numeric, calculated, and function constants
-- **Preferences**: Customizable settings with theme support
-- **Performance**: 3x faster with lazy evaluation and parallel execution
-- **308 Tests**: 99%+ passing unit test coverage (8 new error bar tests)
+- **Constants System**: Numeric, calculated, and function constants (workspace-level)
 
-📋 **[View Complete Feature List →](RELEASE_NOTES.md)**
+📋 **[View v0.2.0 Release Notes →](RELEASE_NOTES.md)**
 
 ---
 
-## Getting Started
+## 📦 Installation
 
-### Prerequisites
-- [uv](https://docs.astral.sh/uv/) package manager
+### Option 1: Install from PyPI (Recommended)
 
-### Clone and Run
+```bash
+# Using pip
+pip install datamanip
+
+# Using uv (faster)
+uv pip install datamanip
+
+# Run directly with uvx (no installation)
+uvx datamanip
+
+# Launch the application
+python -m datamanip
+# or simply:
+datamanip
+```
+
+### Option 2: Development Setup
 
 ```bash
 # Clone the repository
@@ -50,8 +65,6 @@ uv run datamanip
 
 - **[RELEASE_NOTES.md](RELEASE_NOTES.md)** - Complete feature list and v0.2.0 details
 - **[ROADMAP.md](ROADMAP.md)** - Development roadmap from v0.3.0 to v1.0.0
-- **[TODO.md](TODO.md)** - Current sprint priorities and task tracking
-- **[CONFIG_MIGRATION.md](CONFIG_MIGRATION.md)** - Configuration changes guide
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to contribute to DataManip
 
 ---
@@ -63,6 +76,7 @@ DataManip automatically calculates propagated uncertainties using the standard e
 $$\delta f = \sqrt{\sum_i \left(\frac{\partial f}{\partial x_i} \cdot \delta x_i\right)^2}$$
 
 Where:
+
 - $\delta f$ = combined uncertainty of result
 - $\frac{\partial f}{\partial x_i}$ = partial derivatives (calculated symbolically using SymPy)
 - $\delta x_i$ = uncertainties of input variables
@@ -71,15 +85,20 @@ Where:
 
 ## 🚀 Quick Examples
 
-```python
-# See examples/ directory for complete demonstrations
+```bash
+# See examples/ directory for 8 complete demonstrations
 examples/
-├── basic_usage.py              # Simple data manipulation
-├── projectile_motion.py        # Physics with units
-├── uncertainty_demo.py         # Error propagation
-├── derivative_example.py       # Numerical differentiation
-├── error_bars_example.py       # Plotting with uncertainties ⭐ NEW
-└── performance_benchmark.py    # Performance testing
+├── 01_basic_introduction.dmw        # Getting started
+├── 02_constants_and_formulas.dmw    # Formula engine basics
+├── 03_ranges_and_derivatives.dmw    # Numerical differentiation
+├── 04_uncertainty_propagation.dmw   # Error analysis
+├── 05_custom_functions.dmw          # User-defined functions
+├── 06_calculated_constants.dmw      # Dynamic constants
+├── 07_advanced_kinematics.dmw       # Physics with units
+└── 08_photoelectric_effect.dmw      # Complete experiment
+
+# Open an example
+datamanip examples/01_basic_introduction.dmw
 ```
 
 ---
@@ -115,4 +134,4 @@ Built with ❤️ for experimental scientists worldwide.
 
 ---
 
-**Made with PySide6 • pandas • NumPy • matplotlib • sympy • pint**
+Made with PySide6 • pandas • NumPy • matplotlib • sympy • pint
