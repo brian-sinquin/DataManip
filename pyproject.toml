@@ -8,6 +8,32 @@ version = "0.2.0"
 description = "An open-source data manipulation software for experimental sciences"
 readme = "README.md"
 requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "Brian Sinquin", email = "brian.sinquin@gmail.com"}
+]
+keywords = [
+    "data-analysis",
+    "physics",
+    "experiments",
+    "uncertainty",
+    "derivatives",
+    "plotting",
+    "scientific-computing",
+    "pyside6",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Environment :: X11 Applications :: Qt",
+]
 dependencies = [
     "matplotlib>=3.10.7",
     "numpy>=2.3.4",
@@ -18,6 +44,12 @@ dependencies = [
     "scipy>=1.16.3",
     "sympy>=1.14.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/brian-sinquin/DataManip"
+Repository = "https://github.com/brian-sinquin/DataManip"
+Issues = "https://github.com/brian-sinquin/DataManip/issues"
+Documentation = "https://github.com/brian-sinquin/DataManip#readme"
 
 [project.scripts]
 datamanip = "main:main"
