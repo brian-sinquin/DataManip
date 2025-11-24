@@ -49,12 +49,19 @@ class MainWindow(QMainWindow):
         # Notification manager
         self.notifications = None  # Initialized after UI setup
         
+        # Load preferences
+        self.preferences = PreferencesDialog.get_settings()
+        
         # Setup UI
         self._setup_ui()
         self._setup_menu()
         
         # Initialize notification manager after UI is ready
         self.notifications = NotificationManager(self)
+        
+        # Apply initial preferences (display precision)
+        from .widgets.shared import set_display_precision
+        set_display_precision(self.preferences.get("display_precision", 3))
         
         # Welcome message
         self.statusBar().showMessage("Welcome to DataManip! Press Ctrl+T for new table, Ctrl+P for new plot, F1 for help")
@@ -200,42 +207,61 @@ class MainWindow(QMainWindow):
         # Examples menu
         examples_menu = menubar.addMenu("E&xamples")
         
-        example_01 = QAction("01 - Basic Introduction", self)
-        example_01.setToolTip("Simple data entry and plotting")
-        example_01.triggered.connect(lambda: self._load_example_workspace("01_basic_introduction.dmw"))
-        examples_menu.addAction(example_01)
+        # Tutorial examples (one feature each)
+        tutorial_menu = examples_menu.addMenu("📚 Tutorial (One Feature)")
         
-        example_02 = QAction("02 - Constants and Formulas", self)
-        example_02.setToolTip("Using constants (π) and calculated columns")
-        example_02.triggered.connect(lambda: self._load_example_workspace("02_constants_and_formulas.dmw"))
-        examples_menu.addAction(example_02)
+        example_01 = QAction("01 - Simple Pendulum", self)
+        example_01.setToolTip("Tutorial: Basic data entry and plotting")
+        example_01.triggered.connect(lambda: self._load_example_workspace("01_simple_pendulum.dmw"))
+        tutorial_menu.addAction(example_01)
         
-        example_03 = QAction("03 - Ranges and Derivatives", self)
-        example_03.setToolTip("Range generation and numerical derivatives")
-        example_03.triggered.connect(lambda: self._load_example_workspace("03_ranges_and_derivatives.dmw"))
-        examples_menu.addAction(example_03)
+        example_02 = QAction("02 - Resistor Network", self)
+        example_02.setToolTip("Tutorial: Calculated columns with formulas")
+        example_02.triggered.connect(lambda: self._load_example_workspace("02_resistor_network.dmw"))
+        tutorial_menu.addAction(example_02)
         
-        example_04 = QAction("04 - Uncertainty Propagation", self)
-        example_04.setToolTip("Automatic uncertainty propagation with error bars")
-        example_04.triggered.connect(lambda: self._load_example_workspace("04_uncertainty_propagation.dmw"))
-        examples_menu.addAction(example_04)
+        example_03 = QAction("03 - Free Fall", self)
+        example_03.setToolTip("Tutorial: Range generation (linspace)")
+        example_03.triggered.connect(lambda: self._load_example_workspace("03_free_fall.dmw"))
+        tutorial_menu.addAction(example_03)
         
-        example_05 = QAction("05 - Custom Functions", self)
-        example_05.setToolTip("User-defined functions for signal processing")
-        example_05.triggered.connect(lambda: self._load_example_workspace("05_custom_functions.dmw"))
-        examples_menu.addAction(example_05)
+        example_04 = QAction("04 - Inclined Plane", self)
+        example_04.setToolTip("Tutorial: Numerical derivatives (1st and 2nd order)")
+        example_04.triggered.connect(lambda: self._load_example_workspace("04_inclined_plane.dmw"))
+        tutorial_menu.addAction(example_04)
         
-        example_06 = QAction("06 - Calculated Constants", self)
-        example_06.setToolTip("Calculated constants and dependencies")
-        example_06.triggered.connect(lambda: self._load_example_workspace("06_calculated_constants.dmw"))
-        examples_menu.addAction(example_06)
+        example_05 = QAction("05 - Density Measurement", self)
+        example_05.setToolTip("Tutorial: Uncertainty propagation")
+        example_05.triggered.connect(lambda: self._load_example_workspace("05_density_measurement.dmw"))
+        tutorial_menu.addAction(example_05)
         
-        examples_menu.addSeparator()
+        example_06 = QAction("06 - Damped Oscillation", self)
+        example_06.setToolTip("Tutorial: Custom functions")
+        example_06.triggered.connect(lambda: self._load_example_workspace("06_damped_oscillation.dmw"))
+        tutorial_menu.addAction(example_06)
         
-        example_07 = QAction("07 - Advanced Kinematics ⭐", self)
-        example_07.setToolTip("Master example: All features combined in 2D projectile motion")
-        example_07.triggered.connect(lambda: self._load_example_workspace("07_advanced_kinematics.dmw"))
-        examples_menu.addAction(example_07)
+        # Complete experimental examples (all features)
+        complete_menu = examples_menu.addMenu("🔬 Complete Experiments")
+        
+        example_07 = QAction("07 - Calorimetry", self)
+        example_07.setToolTip("Complete: Heat capacity with derivatives and uncertainties")
+        example_07.triggered.connect(lambda: self._load_example_workspace("07_calorimetry.dmw"))
+        complete_menu.addAction(example_07)
+        
+        example_08 = QAction("08 - Photoelectric Effect", self)
+        example_08.setToolTip("Complete: Planck's constant determination")
+        example_08.triggered.connect(lambda: self._load_example_workspace("08_photoelectric_effect.dmw"))
+        complete_menu.addAction(example_08)
+        
+        example_09 = QAction("09 - Spring-Mass System", self)
+        example_09.setToolTip("Complete: SHM with damping and phase space")
+        example_09.triggered.connect(lambda: self._load_example_workspace("09_spring_mass_shm.dmw"))
+        complete_menu.addAction(example_09)
+        
+        example_10 = QAction("10 - Atwood Machine", self)
+        example_10.setToolTip("Complete: Dynamics with full error analysis")
+        example_10.triggered.connect(lambda: self._load_example_workspace("10_atwood_machine.dmw"))
+        complete_menu.addAction(example_10)
         
         # Tools menu
         tools_menu = menubar.addMenu("&Tools")
@@ -275,7 +301,8 @@ class MainWindow(QMainWindow):
             "m^2"
         )
         
-        study = DataTableStudy("Baseball Trajectory Analysis", workspace=self.workspace)
+        max_undo_steps = self.preferences.get("max_undo_steps", 50)
+        study = DataTableStudy("Baseball Trajectory Analysis", workspace=self.workspace, max_undo_steps=max_undo_steps)
         
         # Comprehensive example: Baseball trajectory with all features
         
@@ -428,6 +455,8 @@ class MainWindow(QMainWindow):
         if isinstance(study, DataTableStudy):
             widget = DataTableWidget(study)
             self.study_tabs.addTab(widget, study.name)
+            # Connect dataChanged signal to refresh dependent widgets
+            widget.dataChanged.connect(self._on_data_table_changed)
         elif isinstance(study, PlotStudy):
             widget = PlotWidget(study, self.workspace)
             self.study_tabs.addTab(widget, study.name)
@@ -447,7 +476,8 @@ class MainWindow(QMainWindow):
         
         if ok and name:
             # Create new DataTable study
-            study = DataTableStudy(name, workspace=self.workspace)
+            max_undo_steps = self.preferences.get("max_undo_steps", 50)
+            study = DataTableStudy(name, workspace=self.workspace, max_undo_steps=max_undo_steps)
             
             study.add_column("x")
             study.add_column("y")
@@ -556,12 +586,44 @@ class MainWindow(QMainWindow):
     
     def _on_variables_changed(self):
         """Handle variables changed signal."""
-        # Recalculate all studies
+        # Recalculate all studies that use formulas
         for study in self.workspace.studies.values():
             if isinstance(study, DataTableStudy):
                 study.recalculate_all()
         
+        # Refresh the Constants tab itself to show updated calculated values
+        # Find Constants tab by searching all tabs
+        for i in range(self.study_tabs.count()):
+            constants_tab = self.study_tabs.widget(i)
+            if isinstance(constants_tab, ConstantsWidget):
+                constants_tab._load_constants()
+                break
+        
         self.statusBar().showMessage("Constants updated, studies recalculated")
+    
+    def _on_data_table_changed(self, study_name: str):
+        """Handle data table change to refresh dependent widgets.
+        
+        Args:
+            study_name: Name of the data table that changed
+        """
+        # Refresh all plot widgets that depend on this data table
+        for i in range(self.study_tabs.count()):
+            widget = self.study_tabs.widget(i)
+            
+            # Refresh PlotWidget if it references this data table
+            if isinstance(widget, PlotWidget):
+                if hasattr(widget.study, 'series'):
+                    for series in widget.study.series:
+                        if series.get('study_name') == study_name:
+                            widget.refresh()
+                            break
+            
+            # Refresh StatisticsWidget if it references this data table
+            elif isinstance(widget, StatisticsWidget):
+                if hasattr(widget.study, 'source_study_name'):
+                    if widget.study.source_study_name == study_name:
+                        widget.refresh()
     
     def _close_study(self, index: int):
         """Close study tab.
@@ -696,7 +758,8 @@ class MainWindow(QMainWindow):
                     )
                     
                     if ok and name:
-                        study = DataTableStudy(name, workspace=self.workspace)
+                        max_undo_steps = self.preferences.get("max_undo_steps", 50)
+                        study = DataTableStudy(name, workspace=self.workspace, max_undo_steps=max_undo_steps)
                         study.import_from_csv(filename, **settings)
                         
                         self._add_study(study)
@@ -731,7 +794,8 @@ class MainWindow(QMainWindow):
                 )
                 
                 if ok and name:
-                    study = DataTableStudy(name, workspace=self.workspace)
+                    max_undo_steps = self.preferences.get("max_undo_steps", 50)
+                    study = DataTableStudy(name, workspace=self.workspace, max_undo_steps=max_undo_steps)
                     study.import_from_excel(filename)
                     
                     self._add_study(study)
@@ -908,14 +972,19 @@ class MainWindow(QMainWindow):
             )
             self.notifications.show_error("Failed to save workspace")
     
-    def _load_workspace(self):
-        """Load workspace from JSON file."""
-        filename, _ = QFileDialog.getOpenFileName(
-            self,
-            "Open Workspace",
-            "",
-            "DataManip Workspace (*.dmw);;JSON Files (*.json);;All Files (*)"
-        )
+    def _load_workspace(self, filename: str = None):
+        """Load workspace from JSON file.
+        
+        Args:
+            filename: Optional path to workspace file. If None, shows file dialog.
+        """
+        if not filename:
+            filename, _ = QFileDialog.getOpenFileName(
+                self,
+                "Open Workspace",
+                "",
+                "DataManip Workspace (*.dmw);;JSON Files (*.json);;All Files (*)"
+            )
         
         if not filename:
             return
@@ -935,6 +1004,8 @@ class MainWindow(QMainWindow):
                 if isinstance(study, DataTableStudy):
                     widget = DataTableWidget(study)
                     self.study_tabs.addTab(widget, study.name)
+                    # Connect dataChanged signal
+                    widget.dataChanged.connect(self._on_data_table_changed)
                 elif isinstance(study, PlotStudy):
                     widget = PlotWidget(study, self.workspace)
                     self.study_tabs.addTab(widget, study.name)
@@ -999,6 +1070,7 @@ class MainWindow(QMainWindow):
         <tr><td><b>Ctrl+D</b></td><td>Delete Row(s)</td></tr>
         <tr><td><b>Ctrl+Shift+D</b></td><td>Add Data Column</td></tr>
         <tr><td><b>Ctrl+Shift+C</b></td><td>Add Calculated Column</td></tr>
+        <tr><td><b>Ctrl+Shift+F</b></td><td>Fill Column/Cells</td></tr>
         <tr><td><b>Ctrl+F</b></td><td>Search/Filter</td></tr>
         <tr><td><b>Double-click header</b></td><td>Rename Column</td></tr>
         </table>
@@ -1033,15 +1105,22 @@ class MainWindow(QMainWindow):
         Args:
             settings: Dictionary of settings from preferences dialog
         """
+        # Update stored preferences
+        self.preferences = settings
+        
         # Update display precision
         if "display_precision" in settings:
-            # This will affect new views; existing views keep their formatting
-            pass
+            from .widgets.shared import set_display_precision, emit_full_model_update
+            set_display_precision(settings["display_precision"])
+            
+            # Refresh all table widgets to update display
+            for i in range(self.study_tabs.count()):
+                widget = self.study_tabs.widget(i)
+                if hasattr(widget, 'model'):
+                    # Force full model update to refresh displayed values
+                    emit_full_model_update(widget.model)
         
-        # Update theme if changed
-        if settings.get("theme") != "System Default":
-            # TODO: Implement theme switching when theme system is added
-            pass
+        # Note: max_undo_steps only applies to new studies
         
         self.statusBar().showMessage("Preferences updated", 3000)
     

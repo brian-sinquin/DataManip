@@ -1,0 +1,144 @@
+{
+  "name": "03 - Free Fall",
+  "workspace_type": "numerical",
+  "studies": {
+    "Free Fall Motion": {
+      "type": "data_table",
+      "data": {
+        "name": "Free Fall Motion",
+        "type": "data_table",
+        "metadata": {},
+        "column_metadata": {
+          "t": {
+            "type": "range",
+            "formula": null,
+            "unit": "s",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": "linspace",
+            "range_start": 0.0,
+            "range_stop": 1.4,
+            "range_count": 20,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "h": {
+            "type": "calculated",
+            "formula": "h0 - 0.5 * g * {t}**2",
+            "unit": "m",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "v": {
+            "type": "calculated",
+            "formula": "g * {t}",
+            "unit": "m/s",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          }
+        },
+        "data_objects": {
+          "main_table": {
+            "name": "main_table",
+            "data": {},
+            "metadata": {}
+          }
+        }
+      }
+    },
+    "Height vs Time": {
+      "type": "plot",
+      "data": {
+        "name": "Height vs Time",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "Free Fall: Height Decrease",
+        "xlabel": "t (s)",
+        "ylabel": "h (m)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Free Fall Drop",
+            "x_col": "t",
+            "y_col": "h",
+            "label": "Height",
+            "style": "line",
+            "color": "#e74c3c",
+            "marker": "o",
+            "linestyle": "-",
+            "xerr_col": null,
+            "yerr_col": null
+          }
+        ]
+      }
+    },
+    "Velocity vs Time": {
+      "type": "plot",
+      "data": {
+        "name": "Velocity vs Time",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "Free Fall: Velocity Increase",
+        "xlabel": "t (s)",
+        "ylabel": "v (m/s)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Free Fall Drop",
+            "x_col": "t",
+            "y_col": "v",
+            "label": "Velocity",
+            "style": "line",
+            "color": "#3498db",
+            "marker": "s",
+            "linestyle": "-",
+            "xerr_col": null,
+            "yerr_col": null
+          }
+        ]
+      }
+    }
+  },
+  "constants": {
+    "g": {
+      "type": "constant",
+      "value": 9.81,
+      "unit": "m/s\u00b2"
+    },
+    "h0": {
+      "type": "constant",
+      "value": 10.0,
+      "unit": "m"
+    }
+  },
+  "metadata": {
+    "description": "Tutorial: Range generation - free fall experiment with calculated positions",
+    "version": "0.2.0",
+    "created": "2025-11-24"
+  }
+}

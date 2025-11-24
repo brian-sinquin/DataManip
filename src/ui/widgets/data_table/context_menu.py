@@ -58,6 +58,11 @@ def show_data_table_context_menu(widget, position):
         menu.addSeparator()
         
         # Data operations
+        if col_type == ColumnType.DATA:
+            fill_action = menu.addAction("Fill Column/Cells")
+            fill_action.setShortcut("Ctrl+Shift+F")
+            fill_action.triggered.connect(lambda: widget._fill_column())
+        
         copy_action = menu.addAction("Copy Cell")
         copy_action.setShortcut("Ctrl+C")
         copy_action.triggered.connect(lambda: widget._copy_selection())

@@ -1,0 +1,325 @@
+{
+  "name": "07 - Calorimetry",
+  "workspace_type": "numerical",
+  "studies": {
+    "Heating Experiment": {
+      "type": "data_table",
+      "data": {
+        "name": "Heating Experiment",
+        "type": "data_table",
+        "metadata": {},
+        "column_metadata": {
+          "t": {
+            "type": "range",
+            "formula": null,
+            "unit": "s",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": "linspace",
+            "range_start": 0.0,
+            "range_stop": 300.0,
+            "range_count": 31,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "T": {
+            "type": "calculated",
+            "formula": "T_initial + 0.15 * {t} + 0.0001 * {t}**2",
+            "unit": "\u00b0C",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "dT": {
+            "type": "data",
+            "formula": null,
+            "unit": "\u00b0C",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "dTdt": {
+            "type": "derivative",
+            "formula": null,
+            "unit": "\u00b0C/s",
+            "uncertainty": null,
+            "derivative_of": "T",
+            "with_respect_to": "t",
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "P": {
+            "type": "calculated",
+            "formula": "C_water * {dTdt}",
+            "unit": "W",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "Q": {
+            "type": "calculated",
+            "formula": "C_water * ({T} - T_initial)",
+            "unit": "J",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "dQ": {
+            "type": "uncertainty",
+            "formula": null,
+            "unit": "J",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": true,
+            "uncertainty_reference": "Q"
+          }
+        },
+        "data_objects": {
+          "main_table": {
+            "name": "main_table",
+            "data": {
+              "dT": [
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1
+              ],
+              "dQ": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            },
+            "metadata": {}
+          }
+        }
+      }
+    },
+    "Temperature vs Time": {
+      "type": "plot",
+      "data": {
+        "name": "Temperature vs Time",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "Calorimetry: Heating Curve",
+        "xlabel": "t (s)",
+        "ylabel": "T (\u00b0C)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Heating Experiment",
+            "x_col": "t",
+            "y_col": "T",
+            "label": "Temperature",
+            "style": "line",
+            "color": "#e74c3c",
+            "marker": "o",
+            "linestyle": "-",
+            "xerr_col": null,
+            "yerr_col": "dT"
+          }
+        ]
+      }
+    },
+    "Power Input": {
+      "type": "plot",
+      "data": {
+        "name": "Power Input",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "Heating Power (from dT/dt)",
+        "xlabel": "t (s)",
+        "ylabel": "P (W)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Heating Experiment",
+            "x_col": "t",
+            "y_col": "P",
+            "label": "Power",
+            "style": "line",
+            "color": "#3498db",
+            "marker": "s",
+            "linestyle": "-",
+            "xerr_col": null,
+            "yerr_col": null
+          }
+        ]
+      }
+    },
+    "Energy vs Temperature": {
+      "type": "plot",
+      "data": {
+        "name": "Energy vs Temperature",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "Cumulative Heat Transfer",
+        "xlabel": "T (\u00b0C)",
+        "ylabel": "Q (J)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Heating Experiment",
+            "x_col": "T",
+            "y_col": "Q",
+            "label": "Heat",
+            "style": "line",
+            "color": "#2ecc71",
+            "marker": "^",
+            "linestyle": "-",
+            "xerr_col": null,
+            "yerr_col": "dQ"
+          }
+        ]
+      }
+    }
+  },
+  "constants": {
+    "m_water": {
+      "type": "constant",
+      "value": 200.0,
+      "unit": "g"
+    },
+    "c_water": {
+      "type": "constant",
+      "value": 4.184,
+      "unit": "J/(g\u00b7K)"
+    },
+    "T_initial": {
+      "type": "constant",
+      "value": 20.0,
+      "unit": "\u00b0C"
+    },
+    "C_water": {
+      "type": "calculated",
+      "formula": "m_water * c_water",
+      "unit": "J/K",
+      "value": null
+    },
+    "heat_transfer": {
+      "type": "function",
+      "formula": "m * c * (Tf - Ti)",
+      "parameters": [
+        "m",
+        "c",
+        "Tf",
+        "Ti"
+      ],
+      "unit": "J"
+    }
+  },
+  "metadata": {
+    "description": "Complete: Heat capacity measurement with uncertainties and thermal analysis",
+    "version": "0.2.0",
+    "created": "2025-11-24"
+  }
+}

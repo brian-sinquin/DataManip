@@ -29,10 +29,10 @@ class TestUnitPropagation:
         study.table.set_column("voltage", [1.0, 2.0, 3.0, 4.0, 5.0])
         
         # Add uncertainty column referencing voltage (no explicit unit)
-        study.add_column("δvoltage", column_type=ColumnType.UNCERTAINTY, uncertainty_reference="voltage")
+        study.add_column("voltage_u", column_type=ColumnType.UNCERTAINTY, uncertainty_reference="voltage")
         
         # Check that uncertainty column inherited the unit
-        assert study.column_metadata["δvoltage"]["unit"] == "V"
+        assert study.column_metadata["voltage_u"]["unit"] == "V"
     
     def test_uncertainty_column_explicit_unit_overrides_inheritance(self):
         """Test that explicit unit specification overrides auto-inheritance."""
@@ -73,13 +73,13 @@ class TestUnitPropagation:
                         formula="{x} + {y}", unit="m", propagate_uncertainty=True)
         
         # Check that δsum was auto-created
-        assert "δsum" in study.table.columns
-        assert study.column_metadata["δsum"]["type"] == ColumnType.UNCERTAINTY
-        assert study.column_metadata["δsum"]["uncertainty_reference"] == "sum"
-        assert study.column_metadata["δsum"]["unit"] == "m"  # Inherited from parent
+        assert "sum_u" in study.table.columns
+        assert study.column_metadata["sum_u"]["type"] == ColumnType.UNCERTAINTY
+        assert study.column_metadata["sum_u"]["uncertainty_reference"] == "sum"
+        assert study.column_metadata["sum_u"]["unit"] == "m"  # Inherited from parent
         
         # Check that sum has reference to uncertainty column
-        assert study.column_metadata["sum"]["uncertainty"] == "δsum"
+        assert study.column_metadata["sum"]["uncertainty"] == "sum_u"
     
     def test_propagate_uncertainty_defaults_to_false(self):
         """Test that propagate_uncertainty defaults to False."""
@@ -93,7 +93,7 @@ class TestUnitPropagation:
         study.add_column("double_x", column_type=ColumnType.CALCULATED, formula="{x} * 2", unit="m")
         
         # Check that no uncertainty column was auto-created
-        assert "δdouble_x" not in study.table.columns
+        assert "double_x_u" not in study.table.columns
         assert study.column_metadata["double_x"]["uncertainty"] is None
     
     def test_recalculation_triggers_uncertainty_update(self):
@@ -118,7 +118,7 @@ class TestUnitPropagation:
                         formula="{a} * {b}", unit="V^2", propagate_uncertainty=True)
         
         # Get initial uncertainty values
-        initial_uncertainties = study.table.get_column("δproduct").tolist()
+        initial_uncertainties = study.table.get_column("product_u").tolist()
         
         # Modify input data
         study.table.set_column("a", [2.0, 3.0, 4.0, 5.0, 6.0])
@@ -127,7 +127,7 @@ class TestUnitPropagation:
         study.recalculate_all()
         
         # Get updated uncertainty values
-        updated_uncertainties = study.table.get_column("δproduct").tolist()
+        updated_uncertainties = study.table.get_column("product_u").tolist()
         
         # Uncertainties should have changed
         assert initial_uncertainties != updated_uncertainties
@@ -155,7 +155,7 @@ class TestUnitPropagation:
                         formula="{temp} ** 2", unit="K^2", propagate_uncertainty=True)
         
         # Should auto-create δtemp_squared but not overwrite existing δtemp
-        assert "δtemp_squared" in study.table.columns
+        assert "temp_squared_u" in study.table.columns
         assert study.table.get_column("δtemp").tolist() == [1.0, 1.0, 1.0, 1.0, 1.0]
     
     def test_unit_inheritance_with_missing_parent_column(self):
@@ -195,11 +195,11 @@ class TestUnitPropagation:
                         unit="J", propagate_uncertainty=True)
         
         # Check uncertainty column was created with correct unit
-        assert "δkinetic_energy" in study.table.columns
-        assert study.column_metadata["δkinetic_energy"]["unit"] == "J"
+        assert "kinetic_energy_u" in study.table.columns
+        assert study.column_metadata["kinetic_energy_u"]["unit"] == "J"
         
         # Check that uncertainties were propagated
-        uncertainties = study.table.get_column("δkinetic_energy").tolist()
+        uncertainties = study.table.get_column("kinetic_energy_u").tolist()
         assert all(u > 0 for u in uncertainties)
         assert not any(np.isnan(u) for u in uncertainties)
     
@@ -234,13 +234,13 @@ class TestUnitPropagation:
         
         # Check metadata preserved
         assert study2.column_metadata["voltage"]["propagate_uncertainty"] is True
-        assert study2.column_metadata["voltage"]["uncertainty"] == "δvoltage"
-        assert study2.column_metadata["δvoltage"]["unit"] == "V"
-        assert study2.column_metadata["δvoltage"]["uncertainty_reference"] == "voltage"
+        assert study2.column_metadata["voltage"]["uncertainty"] == "voltage_u"
+        assert study2.column_metadata["voltage_u"]["unit"] == "V"
+        assert study2.column_metadata["voltage_u"]["uncertainty_reference"] == "voltage"
         
         # Check data preserved
-        assert "δvoltage" in study2.table.columns
-        assert len(study2.table.get_column("δvoltage")) == 3
+        assert "voltage_u" in study2.table.columns
+        assert len(study2.table.get_column("voltage_u")) == 3
     
     def test_disable_propagation_per_column(self):
         """Test that propagate_uncertainty=False disables auto-creation."""
@@ -262,8 +262,8 @@ class TestUnitPropagation:
                         formula="{x} + {y}", unit="m", propagate_uncertainty=False)
         
         # Check that only the first has uncertainty column
-        assert "δsum_with_uncert" in study.table.columns
-        assert "δsum_no_uncert" not in study.table.columns
+        assert "sum_with_uncert_u" in study.table.columns
+        assert "sum_no_uncert_u" not in study.table.columns
     
     def test_uncertainty_column_calculation_with_legacy_suffix(self):
         """Test that uncertainty calculation works with both δ prefix and _u suffix."""
@@ -282,7 +282,7 @@ class TestUnitPropagation:
                         formula="{x} * 2", unit="m", propagate_uncertainty=True)
         
         # Should successfully propagate using x_u
-        uncertainties = study.table.get_column("δdouble_x").tolist()
+        uncertainties = study.table.get_column("double_x_u").tolist()
         assert all(u > 0 for u in uncertainties)
         # Uncertainty should be approximately 2 * 0.1 = 0.2 for linear scaling
         assert all(abs(u - 0.2) < 0.01 for u in uncertainties)

@@ -1,0 +1,174 @@
+{
+  "name": "02 - Resistor Network",
+  "workspace_type": "numerical",
+  "studies": {
+    "Resistor Combinations": {
+      "type": "data_table",
+      "data": {
+        "name": "Resistor Combinations",
+        "type": "data_table",
+        "metadata": {},
+        "column_metadata": {
+          "R1": {
+            "type": "data",
+            "formula": null,
+            "unit": "\u03a9",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "R2": {
+            "type": "data",
+            "formula": null,
+            "unit": "\u03a9",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "Rseries": {
+            "type": "calculated",
+            "formula": "{R1} + {R2}",
+            "unit": "\u03a9",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "Rparallel": {
+            "type": "calculated",
+            "formula": "({R1} * {R2}) / ({R1} + {R2})",
+            "unit": "\u03a9",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          }
+        },
+        "data_objects": {
+          "main_table": {
+            "name": "main_table",
+            "data": {
+              "R1": [
+                100,
+                150,
+                220,
+                330,
+                470,
+                680,
+                820,
+                1000,
+                1200,
+                1500
+              ],
+              "R2": [
+                100,
+                100,
+                100,
+                100,
+                100,
+                100,
+                100,
+                100,
+                100,
+                100
+              ]
+            },
+            "metadata": {}
+          }
+        }
+      }
+    },
+    "Series Resistance": {
+      "type": "plot",
+      "data": {
+        "name": "Series Resistance",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "Series Combination: R_total = R1 + R2",
+        "xlabel": "R1 (\u03a9)",
+        "ylabel": "R_series (\u03a9)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Resistor Combinations",
+            "x_col": "R1",
+            "y_col": "Rseries",
+            "label": "Series",
+            "style": "line",
+            "color": "#e74c3c",
+            "marker": "s",
+            "linestyle": "-",
+            "xerr_col": null,
+            "yerr_col": null
+          }
+        ]
+      }
+    },
+    "Parallel Resistance": {
+      "type": "plot",
+      "data": {
+        "name": "Parallel Resistance",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "Parallel Combination: 1/R_total = 1/R1 + 1/R2",
+        "xlabel": "R1 (\u03a9)",
+        "ylabel": "R_parallel (\u03a9)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Resistor Combinations",
+            "x_col": "R1",
+            "y_col": "Rparallel",
+            "label": "Parallel",
+            "style": "line",
+            "color": "#3498db",
+            "marker": "o",
+            "linestyle": "-",
+            "xerr_col": null,
+            "yerr_col": null
+          }
+        ]
+      }
+    }
+  },
+  "constants": {},
+  "metadata": {
+    "description": "Tutorial: Calculated columns - series and parallel resistor combinations",
+    "version": "0.2.0",
+    "created": "2025-11-24"
+  }
+}

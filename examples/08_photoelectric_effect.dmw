@@ -1,0 +1,310 @@
+{
+  "name": "08 - Photoelectric Effect",
+  "workspace_type": "numerical",
+  "studies": {
+    "Photoelectric Measurements": {
+      "type": "data_table",
+      "data": {
+        "name": "Photoelectric Measurements",
+        "type": "data_table",
+        "metadata": {},
+        "column_metadata": {
+          "lambda_nm": {
+            "type": "data",
+            "formula": null,
+            "unit": "nm",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "d_lambda": {
+            "type": "data",
+            "formula": null,
+            "unit": "nm",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "V_stop": {
+            "type": "data",
+            "formula": null,
+            "unit": "V",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "d_Vstop": {
+            "type": "data",
+            "formula": null,
+            "unit": "V",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "f_THz": {
+            "type": "calculated",
+            "formula": "(c_nm / {lambda_nm}) / 1e12",
+            "unit": "THz",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "d_f": {
+            "type": "uncertainty",
+            "formula": null,
+            "unit": "THz",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": true,
+            "uncertainty_reference": "f_THz"
+          },
+          "K_J": {
+            "type": "calculated",
+            "formula": "e * {V_stop}",
+            "unit": "J",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "K_eV": {
+            "type": "calculated",
+            "formula": "{V_stop}",
+            "unit": "eV",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "d_K": {
+            "type": "uncertainty",
+            "formula": null,
+            "unit": "eV",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": true,
+            "uncertainty_reference": "K_eV"
+          }
+        },
+        "data_objects": {
+          "main_table": {
+            "name": "main_table",
+            "data": {
+              "lambda_nm": [
+                365,
+                405,
+                436,
+                492,
+                546,
+                577
+              ],
+              "d_lambda": [
+                2.0,
+                2.0,
+                2.0,
+                2.0,
+                2.0,
+                2.0
+              ],
+              "V_stop": [
+                1.1,
+                0.78,
+                0.56,
+                0.24,
+                -0.1,
+                -0.31
+              ],
+              "d_Vstop": [
+                0.02,
+                0.02,
+                0.02,
+                0.02,
+                0.02,
+                0.02
+              ],
+              "d_f": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              "d_K": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            },
+            "metadata": {}
+          }
+        }
+      }
+    },
+    "Stopping Potential vs Frequency": {
+      "type": "plot",
+      "data": {
+        "name": "Stopping Potential vs Frequency",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "Photoelectric Effect: V_stop vs f (Slope = h/e)",
+        "xlabel": "f (THz)",
+        "ylabel": "V_stop (V)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Photoelectric Measurements",
+            "x_col": "f_THz",
+            "y_col": "V_stop",
+            "label": "Measurements",
+            "style": "scatter",
+            "color": "#9b59b6",
+            "marker": "o",
+            "linestyle": "",
+            "xerr_col": "d_f",
+            "yerr_col": "d_Vstop"
+          }
+        ]
+      }
+    },
+    "Energy vs Wavelength": {
+      "type": "plot",
+      "data": {
+        "name": "Energy vs Wavelength",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "Kinetic Energy vs Wavelength",
+        "xlabel": "\u03bb (nm)",
+        "ylabel": "K (eV)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Photoelectric Measurements",
+            "x_col": "lambda_nm",
+            "y_col": "K_eV",
+            "label": "Kinetic Energy",
+            "style": "scatter",
+            "color": "#e74c3c",
+            "marker": "s",
+            "linestyle": "",
+            "xerr_col": "d_lambda",
+            "yerr_col": "d_K"
+          }
+        ]
+      }
+    }
+  },
+  "constants": {
+    "c": {
+      "type": "constant",
+      "value": 299800000.0,
+      "unit": "m/s"
+    },
+    "e": {
+      "type": "constant",
+      "value": 1.602e-19,
+      "unit": "C"
+    },
+    "\u03c6": {
+      "type": "constant",
+      "value": 2.28,
+      "unit": "eV"
+    },
+    "c_nm": {
+      "type": "calculated",
+      "formula": "c * 1e9",
+      "unit": "nm/s",
+      "value": null
+    },
+    "V_theory": {
+      "type": "function",
+      "formula": "(h_eV * f_THz - \u03c6) / 1.0",
+      "parameters": [
+        "f_THz",
+        "h_eV",
+        "\u03c6"
+      ],
+      "unit": "V"
+    }
+  },
+  "metadata": {
+    "description": "Complete: Determining Planck's constant from photoelectric effect",
+    "version": "0.2.0",
+    "created": "2025-11-24"
+  }
+}

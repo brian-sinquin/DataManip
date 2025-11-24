@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QTableView, QHeaderView, QToolBar,
     QPushButton, QMenu, QInputDialog, QApplication
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 from typing import Tuple, List, Optional
 import pandas as pd
@@ -32,6 +32,9 @@ class DataTableWidget(QWidget):
     - Add/remove rows and columns
     - Column type management
     """
+    
+    # Signal emitted when data changes (for plot/statistics updates)
+    dataChanged = Signal(str)  # Emits study name
     
     def __init__(self, study: DataTableStudy):
         """Initialize widget.
@@ -123,6 +126,13 @@ class DataTableWidget(QWidget):
         add_column_btn.setMenu(add_column_menu)
         toolbar.addWidget(add_column_btn)
         
+        # Fill column action
+        fill_column_action = QAction("Fill Column", self)
+        fill_column_action.setShortcut("Ctrl+Shift+F")
+        fill_column_action.setToolTip("Fill selected column or cells with a value (Ctrl+Shift+F)")
+        fill_column_action.triggered.connect(self._fill_column)
+        toolbar.addAction(fill_column_action)
+        
         toolbar.addSeparator()
         
         # View operations
@@ -163,15 +173,64 @@ class DataTableWidget(QWidget):
             available_vars = []
         return available_cols, available_vars
     
-    def _refresh_table(self):
-        """Refresh entire table display."""
+    def _refresh_data(self, changed_columns: set = None):
+        """Refresh after data changes (incremental update).
+        
+        Use for: cell edits, paste, fill, delete cell values.
+        Only recalculates dependent columns (fast).
+        
+        Args:
+            changed_columns: Column names that changed (or empty set if no formulas affected)
+        """
+        if changed_columns is None:
+            changed_columns = set()
+        
+        # Mark columns dirty (if any)
+        for col_name in changed_columns:
+            self.study.mark_dirty(col_name)
+        
+        # Recalculate only affected columns (uses dependency tracking)
+        if changed_columns:
+            self.study._recalculate_dirty_columns()
+        
+        # Emit dataChanged for cell range (NOT layoutChanged - faster)
+        if len(self.study.table.data) > 0 and len(self.study.table.columns) > 0:
+            top_left = self.model.index(0, 0)
+            bottom_right = self.model.index(
+                len(self.study.table.data) - 1,
+                len(self.study.table.columns) - 1
+            )
+            self.model.dataChanged.emit(top_left, bottom_right)
+        
+        # Notify other widgets
+        self.dataChanged.emit(self.study.name)
+    
+    def _refresh_structure(self):
+        """Refresh after structural changes (full reset).
+        
+        Use for: add/remove/rename column, change column type.
+        Recalculates all formulas.
+        """
+        self.model.beginResetModel()
         self.study.recalculate_all()
-        emit_full_model_update(self.model)
+        self.model.endResetModel()
+        self.dataChanged.emit(self.study.name)
+    
+    def _refresh_batch(self):
+        """Refresh after batch operations (full reset).
+        
+        Use for: add rows, multi-column adds, load from file.
+        Recalculates all formulas.
+        """
+        self.model.beginResetModel()
+        self.study.recalculate_all()
+        self.model.endResetModel()
+        self.dataChanged.emit(self.study.name)
     
     def _add_row(self):
         """Add row to table."""
         self.study.add_rows(1)
-        self.model.layoutChanged.emit()
+        self._refresh_batch()  # Batch operation - full reset
     
     def _auto_resize_columns(self):
         """Auto-resize all columns to fit content."""
@@ -227,7 +286,7 @@ class DataTableWidget(QWidget):
                 return
             
             self.study.add_column(name, ColumnType.DATA, unit=unit)
-            self.model.layoutChanged.emit()
+            self._refresh_structure()  # Structural change - full reset
     
     def _add_calculated_column(self):
         """Add CALCULATED column."""
@@ -252,7 +311,7 @@ class DataTableWidget(QWidget):
                     unit=unit,
                     propagate_uncertainty=propagate_uncertainty
                 )
-                self.model.layoutChanged.emit()
+                self._refresh_structure()  # Structural change - full reset
             except Exception as e:
                 show_error(self, "Error", f"Failed to add column: {str(e)}")
     
@@ -292,7 +351,7 @@ class DataTableWidget(QWidget):
                     with_respect_to=x_col,
                     order=order
                 )
-                self.model.layoutChanged.emit()
+                self._refresh_structure()  # Structural change - full reset
             except Exception as e:
                 show_error(self, "Error", f"Failed to add column: {str(e)}")
     
@@ -318,7 +377,7 @@ class DataTableWidget(QWidget):
                 unit=unit,
                 uncertainty_reference=ref_col if ref_col else None
             )
-            self.model.layoutChanged.emit()
+            self._refresh_structure()  # Structural change - full reset
     
     def _add_range_column(self):
         """Add RANGE column."""
@@ -347,7 +406,7 @@ class DataTableWidget(QWidget):
                     range_count=result.get("count"),
                     range_step=result.get("step")
                 )
-                self.model.layoutChanged.emit()
+                self._refresh_structure()  # Structural change - full reset
             except Exception as e:
                 show_error(self, "Error", f"Failed to add column: {str(e)}")
     
@@ -393,7 +452,7 @@ class DataTableWidget(QWidget):
             self.study.formula_engine.register_formula(col_name, new_formula)
             
             # Recalculate
-            self._refresh_table()
+            self._refresh_structure()  # Structural change - formula modified
     
     def _delete_column(self, col_name: str):
         """Delete column.
@@ -403,7 +462,7 @@ class DataTableWidget(QWidget):
         """
         if confirm_action(self, "Confirm Delete", f"Delete column '{col_name}'?"):
             self.study.remove_column(col_name)
-            self.model.layoutChanged.emit()
+            self._refresh_structure()  # Structural change - full reset
     
     def _insert_row(self, row: int):
         """Insert row at position.
@@ -422,7 +481,7 @@ class DataTableWidget(QWidget):
         """
         if confirm_action(self, "Confirm Delete", f"Delete row {row + 1}?"):
             self.study.remove_rows([row])
-            self.model.layoutChanged.emit()
+            self._refresh_batch()  # Batch operation - full reset
     
     def _rename_column(self, column_index: int):
         """Rename column via double-click on header.
@@ -465,7 +524,7 @@ class DataTableWidget(QWidget):
         rows = sorted([idx.row() for idx in selected], reverse=True)
         if confirm_action(self, "Confirm Delete", f"Delete {len(rows)} row(s)?"):
             self.study.remove_rows(rows)
-            self.model.layoutChanged.emit()
+            self._refresh_batch()  # Batch operation - full reset
     
     def _copy_selection(self):
         """Copy selected cells to clipboard."""
@@ -543,6 +602,101 @@ class DataTableWidget(QWidget):
         from .column_edit import edit_column_properties
         edit_column_properties(self, col_index)
     
+    def _fill_column(self):
+        """Fill selected column or cells with a value."""
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QDialogButtonBox, QRadioButton, QButtonGroup
+        
+        # Get selection
+        selection = self.view.selectionModel().selectedIndexes()
+        if not selection:
+            show_warning(self, "No Selection", "Please select a column or cells to fill.")
+            return
+        
+        # Get selected column(s)
+        selected_cols = set(idx.column() for idx in selection)
+        if len(selected_cols) > 1:
+            show_warning(self, "Multiple Columns", "Please select cells from a single column only.")
+            return
+        
+        col_idx = list(selected_cols)[0]
+        col_name = self.study.table.columns[col_idx]
+        col_type = self.study.get_column_type(col_name)
+        
+        # Only allow filling DATA columns
+        if col_type != ColumnType.DATA:
+            show_warning(
+                self, 
+                "Cannot Fill", 
+                f"Cannot fill {col_type.upper()} column. Only DATA columns can be filled.\n"
+                f"To modify this column, convert it to DATA type first."
+            )
+            return
+        
+        # Create dialog
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Fill Column: {col_name}")
+        layout = QVBoxLayout(dialog)
+        
+        # Value input
+        layout.addWidget(QLabel("Enter value to fill:"))
+        value_input = QLineEdit()
+        value_input.setPlaceholderText("e.g., 0, 1.5, -3.14")
+        layout.addWidget(value_input)
+        
+        # Fill scope
+        layout.addWidget(QLabel("\nFill scope:"))
+        scope_group = QButtonGroup(dialog)
+        
+        selected_radio = QRadioButton(f"Selected cells only ({len(selection)} cells)")
+        selected_radio.setChecked(True)
+        scope_group.addButton(selected_radio)
+        layout.addWidget(selected_radio)
+        
+        all_radio = QRadioButton(f"Entire column ({len(self.study.table.data)} rows)")
+        scope_group.addButton(all_radio)
+        layout.addWidget(all_radio)
+        
+        # Buttons
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        
+        # Execute dialog
+        if dialog.exec() != QDialog.Accepted:
+            return
+        
+        # Get value
+        value_str = value_input.text().strip()
+        if not value_str:
+            show_warning(self, "Empty Value", "Please enter a value.")
+            return
+        
+        # Parse value
+        try:
+            value = float(value_str)
+        except ValueError:
+            show_warning(self, "Invalid Value", f"'{value_str}' is not a valid number.")
+            return
+        
+        # Fill cells
+        if selected_radio.isChecked():
+            # Fill selected cells only
+            for idx in selection:
+                row = idx.row()
+                self.study.table.data.iloc[row, col_idx] = value
+        else:
+            # Fill entire column
+            self.study.table.data.iloc[:, col_idx] = value
+        
+        # Mark dependent columns as dirty and recalculate
+        self._refresh_data({col_name})  # Data change - incremental update
+        
+        # Show confirmation
+        scope_text = f"{len(selection)} cells" if selected_radio.isChecked() else "entire column"
+        from ..shared import show_info
+        show_info(self, "Fill Complete", f"Filled {scope_text} with value {value}")
+    
     def _convert_column_to_data(self):
         """Convert selected column to DATA type."""
         current_col = self.view.currentIndex().column()
@@ -575,5 +729,5 @@ class DataTableWidget(QWidget):
         for key in ["formula", "derivative_of", "with_respect_to", "range_type", "range_start", "range_stop", "range_count"]:
             self.study.column_metadata[col_name].pop(key, None)
         
-        self._refresh_table()
+        self._refresh_structure()  # Structural change - column type changed
         show_warning(self, "Conversion Complete", f"Column '{col_name}' is now a DATA column.")

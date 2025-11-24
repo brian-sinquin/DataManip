@@ -291,14 +291,15 @@ class ConstantsWidget(QWidget):
         
         # Constants table
         self.table = QTableWidget()
-        self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["Type", "Name", "Value/Formula", "Parameters", "Unit"])
+        self.table.setColumnCount(6)
+        self.table.setHorizontalHeaderLabels(["Type", "Name", "Value", "Formula", "Parameters", "Unit"])
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.Stretch)
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.Stretch)
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.doubleClicked.connect(self._edit_selected)
         layout.addWidget(self.table)
@@ -449,10 +450,56 @@ class ConstantsWidget(QWidget):
         """Load constants from workspace into table."""
         self.table.setRowCount(0)
         
+        # Import FormulaEngine to evaluate calculated constants
+        from core.formula_engine import FormulaEngine
+        
         # Get all constants
         all_constants = self.workspace.constants
         
-        # Populate table
+        # Create engine and build context with workspace constants
+        engine = FormulaEngine()
+        context = {}
+        
+        # Evaluate constants in dependency order (multiple passes)
+        # This handles cases where calculated constants depend on other calculated constants
+        remaining = set(all_constants.keys())
+        max_passes = len(all_constants) + 1
+        pass_count = 0
+        
+        while remaining and pass_count < max_passes:
+            pass_count += 1
+            evaluated_this_pass = []
+            
+            for name in list(remaining):
+                data = all_constants[name]
+                const_type = data.get("type", "constant")
+                
+                if const_type == "constant":
+                    # Simple constant - add to context
+                    context[name] = data.get("value")
+                    evaluated_this_pass.append(name)
+                elif const_type == "calculated":
+                    # Try to evaluate - will succeed if all dependencies are in context
+                    try:
+                        result = engine.evaluate(data.get("formula", ""), context)
+                        context[name] = result
+                        evaluated_this_pass.append(name)
+                    except Exception:
+                        # Dependencies not ready yet, try next pass
+                        pass
+                else:
+                    # Functions - just mark as evaluated (don't add to context)
+                    evaluated_this_pass.append(name)
+            
+            # Remove evaluated constants from remaining
+            for name in evaluated_this_pass:
+                remaining.remove(name)
+            
+            # If no progress this pass, we have circular dependencies or errors
+            if not evaluated_this_pass:
+                break
+        
+        # Populate table in sorted order
         for name, data in sorted(all_constants.items()):
             row = self.table.rowCount()
             self.table.insertRow(row)
@@ -473,26 +520,51 @@ class ConstantsWidget(QWidget):
             name_item.setFlags(name_item.flags() & ~Qt.ItemIsEditable)
             self.table.setItem(row, 1, name_item)
             
-            # Value/Formula
+            # Value (computed for calculated variables)
+            value_str = ""
             if const_type == "constant":
                 value_str = str(data.get("value", ""))
-            else:
-                value_str = data.get("formula", "")
+            elif const_type == "calculated":
+                # Check if we successfully evaluated it
+                if name in context:
+                    result = context[name]
+                    value_str = f"{result:.6g}"  # 6 significant figures
+                else:
+                    # Failed to evaluate (circular dependency or missing dependency)
+                    try:
+                        result = engine.evaluate(data.get("formula", ""), context)
+                        value_str = f"{result:.6g}"
+                    except Exception as e:
+                        value_str = f"Error: {str(e)}"
+            else:  # function
+                value_str = "—"  # N/A for functions
+            
             value_item = QTableWidgetItem(value_str)
             value_item.setFlags(value_item.flags() & ~Qt.ItemIsEditable)
             self.table.setItem(row, 2, value_item)
+            
+            # Formula
+            formula_str = ""
+            if const_type == "calculated" or const_type == "function":
+                formula_str = data.get("formula", "")
+            else:
+                formula_str = "—"  # N/A for simple constants
+            
+            formula_item = QTableWidgetItem(formula_str)
+            formula_item.setFlags(formula_item.flags() & ~Qt.ItemIsEditable)
+            self.table.setItem(row, 3, formula_item)
             
             # Parameters
             params = data.get("parameters", [])
             params_item = QTableWidgetItem(", ".join(params) if params else "")
             params_item.setFlags(params_item.flags() & ~Qt.ItemIsEditable)
-            self.table.setItem(row, 3, params_item)
+            self.table.setItem(row, 4, params_item)
             
             # Unit
             unit = data.get("unit", "")
             unit_item = QTableWidgetItem(unit or "")
             unit_item.setFlags(unit_item.flags() & ~Qt.ItemIsEditable)
-            self.table.setItem(row, 4, unit_item)
+            self.table.setItem(row, 5, unit_item)
     
     def _add_constant(self):
         """Add new constant."""

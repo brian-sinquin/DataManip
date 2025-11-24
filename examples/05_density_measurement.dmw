@@ -1,0 +1,318 @@
+{
+  "name": "05 - Density Measurement",
+  "workspace_type": "numerical",
+  "studies": {
+    "Metal Cylinders": {
+      "type": "data_table",
+      "data": {
+        "name": "Metal Cylinders",
+        "type": "data_table",
+        "metadata": {},
+        "column_metadata": {
+          "m": {
+            "type": "data",
+            "formula": null,
+            "unit": "g",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "d": {
+            "type": "data",
+            "formula": null,
+            "unit": "mm",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "h": {
+            "type": "data",
+            "formula": null,
+            "unit": "mm",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "dm": {
+            "type": "data",
+            "formula": null,
+            "unit": "g",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "dd": {
+            "type": "data",
+            "formula": null,
+            "unit": "mm",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "dh": {
+            "type": "data",
+            "formula": null,
+            "unit": "mm",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "V": {
+            "type": "calculated",
+            "formula": "np.pi * ({d}/2)**2 * {h}",
+            "unit": "mm\u00b3",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "dV": {
+            "type": "uncertainty",
+            "formula": null,
+            "unit": "mm\u00b3",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": true,
+            "uncertainty_reference": "V"
+          },
+          "\u03c1": {
+            "type": "calculated",
+            "formula": "{m} / ({V} * 0.001)",
+            "unit": "g/cm\u00b3",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "\u03b4\u03c1": {
+            "type": "uncertainty",
+            "formula": null,
+            "unit": "g/cm\u00b3",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": true,
+            "uncertainty_reference": "\u03c1"
+          }
+        },
+        "data_objects": {
+          "main_table": {
+            "name": "main_table",
+            "data": {
+              "m": [
+                15.8,
+                23.5,
+                31.2,
+                42.1,
+                50.3,
+                65.7,
+                78.4
+              ],
+              "d": [
+                10.1,
+                10.0,
+                10.2,
+                9.9,
+                10.1,
+                10.0,
+                9.8
+              ],
+              "h": [
+                20.0,
+                30.1,
+                39.8,
+                50.2,
+                60.0,
+                79.9,
+                100.1
+              ],
+              "dm": [
+                0.1,
+                0.1,
+                0.1,
+                0.2,
+                0.2,
+                0.2,
+                0.3
+              ],
+              "dd": [
+                0.05,
+                0.05,
+                0.05,
+                0.05,
+                0.05,
+                0.05,
+                0.05
+              ],
+              "dh": [
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1,
+                0.1
+              ],
+              "dV": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              "\u03b4\u03c1": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            },
+            "metadata": {}
+          }
+        }
+      }
+    },
+    "Mass vs Volume": {
+      "type": "plot",
+      "data": {
+        "name": "Mass vs Volume",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "Mass-Volume Relationship",
+        "xlabel": "V (mm\u00b3)",
+        "ylabel": "m (g)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Metal Cylinders",
+            "x_col": "V",
+            "y_col": "m",
+            "label": "Measurements",
+            "style": "line",
+            "color": "#9b59b6",
+            "marker": "o",
+            "linestyle": "-",
+            "xerr_col": "dV",
+            "yerr_col": "dm"
+          }
+        ]
+      }
+    },
+    "Density Results": {
+      "type": "plot",
+      "data": {
+        "name": "Density Results",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "Calculated Density with Uncertainties",
+        "xlabel": "Sample Number",
+        "ylabel": "\u03c1 (g/cm\u00b3)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Metal Cylinders",
+            "x_col": "h",
+            "y_col": "\u03c1",
+            "label": "Density",
+            "style": "scatter",
+            "color": "#e74c3c",
+            "marker": "s",
+            "linestyle": "",
+            "xerr_col": null,
+            "yerr_col": "\u03b4\u03c1"
+          }
+        ]
+      }
+    }
+  },
+  "constants": {},
+  "metadata": {
+    "description": "Tutorial: Uncertainty propagation - measuring metal cylinder density",
+    "version": "0.2.0",
+    "created": "2025-11-24"
+  }
+}

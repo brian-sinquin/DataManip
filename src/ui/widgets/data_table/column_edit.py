@@ -1,5 +1,8 @@
 """Column editing dialogs for DataTable widget."""
 
+import numpy as np
+import pandas as pd
+
 from studies.data_table_study import ColumnType
 from ..shared import show_warning
 from ..column_dialogs import (
@@ -77,7 +80,7 @@ def _edit_data_column(widget, col_name: str):
         widget.study.column_metadata[new_name if new_name != col_name else col_name]["unit"] = new_unit
         
         # Refresh table
-        widget._refresh_table()
+        widget._refresh_structure()  # Structural change - column properties modified
 
 
 def _edit_calculated_column(widget, col_name: str):
@@ -123,7 +126,7 @@ def _edit_calculated_column(widget, col_name: str):
         widget.study.formula_engine.register_formula(col_name, new_formula)
         
         # Recalculate column with new formula
-        widget.study._evaluate_column(col_name)
+        widget.study._recalculate_column(col_name)
         
         # Handle uncertainty propagation changes
         if new_propagate_unc and not old_propagate_unc:
@@ -150,7 +153,7 @@ def _edit_calculated_column(widget, col_name: str):
                     widget.study.remove_column(uncert_name)
         
         # Recalculate
-        widget._refresh_table()
+        widget._refresh_structure()  # Structural change - formula/uncertainty modified
 
 
 def _edit_uncertainty_column(widget, col_name: str):
@@ -187,7 +190,7 @@ def _edit_uncertainty_column(widget, col_name: str):
         widget.study.column_metadata[col_name]["uncertainty_reference"] = new_ref_col if new_ref_col else None
         
         # Refresh table
-        widget._refresh_table()
+        widget._refresh_structure()  # Structural change - column properties modified
 
 
 def _edit_derivative_column(widget, col_name: str):
@@ -245,7 +248,7 @@ def _edit_derivative_column(widget, col_name: str):
         widget.study._calculate_derivative(col_name)
         
         # Refresh table to show updated data
-        widget._refresh_table()
+        widget._refresh_structure()  # Structural change - derivative parameters modified
 
 
 def _edit_range_column(widget, col_name: str):
@@ -272,13 +275,14 @@ def _edit_range_column(widget, col_name: str):
     elif range_type == "logspace":
         dialog.type_combo.setCurrentIndex(2)
     
-    dialog.start_spin.setValue(col_meta.get("start", 0))
-    dialog.stop_spin.setValue(col_meta.get("stop", 10))
+    # Load values from metadata (with "range_" prefix)
+    dialog.start_spin.setValue(col_meta.get("range_start", 0))
+    dialog.stop_spin.setValue(col_meta.get("range_stop", 10))
     
-    if "count" in col_meta and col_meta["count"]:
-        dialog.count_spin.setValue(col_meta["count"])
-    if "step" in col_meta and col_meta["step"]:
-        dialog.step_spin.setValue(col_meta["step"])
+    if "range_count" in col_meta and col_meta["range_count"]:
+        dialog.count_spin.setValue(col_meta["range_count"])
+    if "range_step" in col_meta and col_meta["range_step"]:
+        dialog.step_spin.setValue(col_meta["range_step"])
     
     unit = col_meta.get("unit")
     if unit:
@@ -287,11 +291,47 @@ def _edit_range_column(widget, col_name: str):
     if dialog.exec():
         values = dialog.get_values()
         
+        # Convert keys to match expected metadata format (add "range_" prefix)
+        metadata_update = {
+            "range_type": values["range_type"],
+            "range_start": values["start"],
+            "range_stop": values["stop"],
+            "range_count": values["count"],
+            "range_step": values["step"],
+            "unit": values["unit"]
+        }
+        
         # Update metadata
-        widget.study.column_metadata[col_name].update(values)
+        widget.study.column_metadata[col_name].update(metadata_update)
+        
+        # Store old row count to detect size change
+        old_row_count = len(widget.study.table.data)
         
         # Regenerate range data
         widget.study._generate_range(col_name)
         
-        # Refresh table to show updated data
-        widget._refresh_table()
+        # Check if row count changed significantly
+        new_row_count = len(widget.study.table.data)
+        
+        # If row count changed, resize DATA columns to match
+        if new_row_count != old_row_count:
+            for data_col in widget.study.table.columns:
+                col_meta = widget.study.column_metadata.get(data_col, {})
+                if col_meta.get("type") == "data":
+                    # Get existing values (only the old length, not including NaN padding)
+                    existing = widget.study.table.data[data_col].values[:old_row_count]
+                    
+                    # Resize by padding or truncating
+                    if new_row_count > old_row_count:
+                        # Pad with last value or NaN
+                        last_val = existing[-1] if len(existing) > 0 and not pd.isna(existing[-1]) else np.nan
+                        padding = np.full(new_row_count - old_row_count, last_val)
+                        resized = np.concatenate([existing, padding])
+                    else:
+                        # Truncate
+                        resized = existing[:new_row_count]
+                    
+                    widget.study.table.set_column(data_col, pd.Series(resized))
+        
+        # Use structure refresh (full reset) - necessary when row count changes
+        widget._refresh_structure()

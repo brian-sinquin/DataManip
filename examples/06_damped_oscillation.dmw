@@ -1,0 +1,226 @@
+{
+  "name": "06 - Damped Oscillation",
+  "workspace_type": "numerical",
+  "studies": {
+    "Damped Motion": {
+      "type": "data_table",
+      "data": {
+        "name": "Damped Motion",
+        "type": "data_table",
+        "metadata": {},
+        "column_metadata": {
+          "t": {
+            "type": "range",
+            "formula": null,
+            "unit": "s",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": "linspace",
+            "range_start": 0.0,
+            "range_stop": 20.0,
+            "range_count": 101,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "x": {
+            "type": "calculated",
+            "formula": "damped_osc({t}, A0, \u03c9, \u03b3)",
+            "unit": "cm",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "env_plus": {
+            "type": "calculated",
+            "formula": "envelope({t}, A0, \u03b3)",
+            "unit": "cm",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "env_minus": {
+            "type": "calculated",
+            "formula": "-envelope({t}, A0, \u03b3)",
+            "unit": "cm",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "E": {
+            "type": "calculated",
+            "formula": "({x})**2",
+            "unit": "cm\u00b2",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          }
+        },
+        "data_objects": {
+          "main_table": {
+            "name": "main_table",
+            "data": {},
+            "metadata": {}
+          }
+        }
+      }
+    },
+    "Damped Oscillation": {
+      "type": "plot",
+      "data": {
+        "name": "Damped Oscillation",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "Damped Harmonic Motion",
+        "xlabel": "t (s)",
+        "ylabel": "x (cm)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Damped Motion",
+            "x_col": "t",
+            "y_col": "x",
+            "label": "Position",
+            "style": "line",
+            "color": "#3498db",
+            "marker": "o",
+            "linestyle": "-",
+            "xerr_col": null,
+            "yerr_col": null
+          },
+          {
+            "study": "Damped Motion",
+            "x_col": "t",
+            "y_col": "env_plus",
+            "label": "Envelope",
+            "style": "line",
+            "color": "#e74c3c",
+            "marker": "o",
+            "linestyle": "--",
+            "xerr_col": null,
+            "yerr_col": null
+          },
+          {
+            "study": "Damped Motion",
+            "x_col": "t",
+            "y_col": "env_minus",
+            "label": "env_minus vs t",
+            "style": "line",
+            "color": "#e74c3c",
+            "marker": "o",
+            "linestyle": "--",
+            "xerr_col": null,
+            "yerr_col": null
+          }
+        ]
+      }
+    },
+    "Energy Decay": {
+      "type": "plot",
+      "data": {
+        "name": "Energy Decay",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "Energy vs Time (Exponential Decay)",
+        "xlabel": "t (s)",
+        "ylabel": "E (cm\u00b2)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Damped Motion",
+            "x_col": "t",
+            "y_col": "E",
+            "label": "Energy",
+            "style": "line",
+            "color": "#2ecc71",
+            "marker": "o",
+            "linestyle": "-",
+            "xerr_col": null,
+            "yerr_col": null
+          }
+        ]
+      }
+    }
+  },
+  "constants": {
+    "A0": {
+      "type": "constant",
+      "value": 10.0,
+      "unit": "cm"
+    },
+    "\u03c9": {
+      "type": "constant",
+      "value": 2.0,
+      "unit": "rad/s"
+    },
+    "\u03b3": {
+      "type": "constant",
+      "value": 0.15,
+      "unit": "1/s"
+    },
+    "damped_osc": {
+      "type": "function",
+      "formula": "A0 * np.exp(-\u03b3 * t) * np.cos(\u03c9 * t)",
+      "parameters": [
+        "t",
+        "A0",
+        "\u03c9",
+        "\u03b3"
+      ],
+      "unit": "cm"
+    },
+    "envelope": {
+      "type": "function",
+      "formula": "A0 * np.exp(-\u03b3 * t)",
+      "parameters": [
+        "t",
+        "A0",
+        "\u03b3"
+      ],
+      "unit": "cm"
+    }
+  },
+  "metadata": {
+    "description": "Tutorial: Custom functions - analyzing damped harmonic motion",
+    "version": "0.2.0",
+    "created": "2025-11-24"
+  }
+}

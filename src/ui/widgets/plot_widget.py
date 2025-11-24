@@ -107,6 +107,10 @@ class PlotWidget(QWidget):
         self.study.update_plot(self.figure)
         self.canvas.draw()
     
+    def refresh(self):
+        """Refresh plot (alias for _refresh_plot for external calls)."""
+        self._refresh_plot()
+    
     def _add_series_dialog(self):
         """Show dialog to add new series."""
         dialog = AddSeriesDialog(self.workspace, parent=self)

@@ -1,0 +1,200 @@
+{
+  "name": "04 - Inclined Plane",
+  "workspace_type": "numerical",
+  "studies": {
+    "Cart Motion": {
+      "type": "data_table",
+      "data": {
+        "name": "Cart Motion",
+        "type": "data_table",
+        "metadata": {},
+        "column_metadata": {
+          "t": {
+            "type": "data",
+            "formula": null,
+            "unit": "s",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "x": {
+            "type": "data",
+            "formula": null,
+            "unit": "m",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "v": {
+            "type": "derivative",
+            "formula": null,
+            "unit": "m/s",
+            "uncertainty": null,
+            "derivative_of": "x",
+            "with_respect_to": "t",
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "a": {
+            "type": "derivative",
+            "formula": null,
+            "unit": "m/s\u00b2",
+            "uncertainty": null,
+            "derivative_of": "v",
+            "with_respect_to": "t",
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          }
+        },
+        "data_objects": {
+          "main_table": {
+            "name": "main_table",
+            "data": {
+              "t": [
+                0.0,
+                0.5,
+                1.0,
+                1.5,
+                2.0,
+                2.5,
+                3.0,
+                3.5,
+                4.0
+              ],
+              "x": [
+                0.0,
+                0.009,
+                0.034,
+                0.077,
+                0.137,
+                0.214,
+                0.308,
+                0.419,
+                0.548
+              ]
+            },
+            "metadata": {}
+          }
+        }
+      }
+    },
+    "Position": {
+      "type": "plot",
+      "data": {
+        "name": "Position",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "Cart Position vs Time",
+        "xlabel": "t (s)",
+        "ylabel": "x (m)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Cart Motion",
+            "x_col": "t",
+            "y_col": "x",
+            "label": "Position",
+            "style": "line",
+            "color": "#2ecc71",
+            "marker": "o",
+            "linestyle": "-",
+            "xerr_col": null,
+            "yerr_col": null
+          }
+        ]
+      }
+    },
+    "Velocity": {
+      "type": "plot",
+      "data": {
+        "name": "Velocity",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "Cart Velocity (1st Derivative)",
+        "xlabel": "t (s)",
+        "ylabel": "v (m/s)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Cart Motion",
+            "x_col": "t",
+            "y_col": "v",
+            "label": "Velocity",
+            "style": "line",
+            "color": "#3498db",
+            "marker": "s",
+            "linestyle": "-",
+            "xerr_col": null,
+            "yerr_col": null
+          }
+        ]
+      }
+    },
+    "Acceleration": {
+      "type": "plot",
+      "data": {
+        "name": "Acceleration",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "Cart Acceleration (2nd Derivative)",
+        "xlabel": "t (s)",
+        "ylabel": "a (m/s\u00b2)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Cart Motion",
+            "x_col": "t",
+            "y_col": "a",
+            "label": "Acceleration",
+            "style": "scatter",
+            "color": "#e74c3c",
+            "marker": "^",
+            "linestyle": "",
+            "xerr_col": null,
+            "yerr_col": null
+          }
+        ]
+      }
+    }
+  },
+  "constants": {},
+  "metadata": {
+    "description": "Tutorial: Derivatives - cart acceleration on inclined plane",
+    "version": "0.2.0",
+    "created": "2025-11-24"
+  }
+}

@@ -46,12 +46,13 @@ class DataTableStudy(Study):
         formula_engine: Formula evaluator
     """
     
-    def __init__(self, name: str, workspace=None):
+    def __init__(self, name: str, workspace=None, max_undo_steps: int = 50):
         """Initialize DataTable study.
         
         Args:
             name: Study name
             workspace: Reference to parent workspace for variables access
+            max_undo_steps: Maximum undo history steps
         """
         super().__init__(name)
         
@@ -69,7 +70,7 @@ class DataTableStudy(Study):
         self.formula_engine = FormulaEngine()
         
         # Undo/Redo manager
-        self.undo_manager = UndoManager(max_history=50)
+        self.undo_manager = UndoManager(max_history=max_undo_steps)
         
         # Dirty flag tracking for lazy evaluation
         self._dirty_columns: set = set()
@@ -137,6 +138,39 @@ class DataTableStudy(Study):
             for dep in deps:
                 if dep in self.table.data.columns:
                     self._add_dependency(col_name, dep)
+    
+    def _get_all_dependencies(self, col_name: str) -> set:
+        """Get dependencies for any column type.
+        
+        Returns:
+            Set of column names that this column depends on
+        """
+        if col_name not in self.column_metadata:
+            return set()
+        
+        meta = self.column_metadata[col_name]
+        col_type = meta.get("type")
+        
+        if col_type == ColumnType.CALCULATED:
+            # Extract dependencies from formula
+            formula = meta.get("formula", "")
+            if formula:
+                return set(self.formula_engine.extract_dependencies(formula))
+        
+        elif col_type == ColumnType.DERIVATIVE:
+            # Depends on the column we're taking derivative of
+            dep_col = meta.get("derivative_of")
+            if dep_col:
+                return {dep_col}
+        
+        elif col_type == ColumnType.UNCERTAINTY:
+            # Depends on parent column
+            parent = meta.get("uncertainty_reference")
+            if parent:
+                return {parent}
+        
+        # RANGE and DATA columns have no dependencies
+        return set()
     
     # ========================================================================
     # Column Management
@@ -232,42 +266,27 @@ class DataTableStudy(Study):
                         # Mark dirty if not auto-recalculating (batch mode)
                         self.mark_dirty(name)
                 
-                # Auto-create uncertainty column if propagate_uncertainty is True
+                # Auto-create uncertainty column if requested
                 if propagate_uncertainty:
-                    uncertainty_col_name = f"δ{name}"
-                    # Only create if it doesn't already exist
-                    if uncertainty_col_name not in self.table.data.columns:
-                        # Recursively call add_column for uncertainty column
+                    uncert_name = f"{name}_u"
+                    if uncert_name not in self.column_metadata:
                         # Temporarily disable undo to avoid nested tracking
                         undo_was_enabled = self.undo_manager.is_enabled()
                         self.undo_manager.set_enabled(False)
                         try:
                             self.add_column(
-                                uncertainty_col_name,
+                                uncert_name,
                                 column_type=ColumnType.UNCERTAINTY,
+                                unit=unit,  # Same unit as parent
                                 uncertainty_reference=name
                             )
                             # Link uncertainty column to parent
-                            self.column_metadata[name]["uncertainty"] = uncertainty_col_name
+                            self.column_metadata[name]["uncertainty"] = uncert_name
                             # Calculate initial uncertainty
                             if len(self.table.data) > 0:
                                 self._recalculate_uncertainty(name)
                         finally:
                             self.undo_manager.set_enabled(undo_was_enabled)
-                        self.mark_dirty(name)
-                
-                # Auto-create uncertainty column if requested
-                if propagate_uncertainty:
-                    uncert_name = f"{name}_u"
-                    if uncert_name not in self.column_metadata:
-                        uncert_values = self._calculate_propagated_uncertainty(name)
-                        self.add_column(
-                            uncert_name,
-                            column_type=ColumnType.UNCERTAINTY,
-                            unit=unit,  # Same unit as parent
-                            initial_data=uncert_values,
-                            uncertainty_reference=name
-                        )
             
             elif column_type == ColumnType.DERIVATIVE:
                 if len(self.table.data) > 0:
@@ -530,21 +549,24 @@ class DataTableStudy(Study):
             # First column - initialize DataFrame
             self.table.data = pd.DataFrame({name: data})
         else:
-            # Extend or truncate table to match new column length
+            # Extend table if new range is longer than current table
             current_len = len(self.table.data)
             new_len = len(data)
             
             if new_len > current_len:
-                # Extend table
-                self.table.data = pd.concat([
-                    self.table.data,
-                    pd.DataFrame(index=range(current_len, new_len))
-                ], ignore_index=True)
+                # Extend table efficiently - create new rows as DataFrame and concat
+                rows_to_add = new_len - current_len
+                new_rows = pd.DataFrame(
+                    np.nan,
+                    index=range(current_len, new_len),
+                    columns=self.table.data.columns
+                )
+                self.table.data = pd.concat([self.table.data, new_rows], ignore_index=True)
             
-            # Now add the column (will fill NaN if shorter than table)
-            if new_len < len(self.table.data):
-                # Pad with NaN
-                padded_data = np.full(len(self.table.data), np.nan)
+            # Update the column data (pad with NaN if shorter than table)
+            if new_len < current_len:
+                # Pad with NaN to match table length
+                padded_data = np.full(current_len, np.nan)
                 padded_data[:new_len] = data
                 self.table.data[name] = padded_data
             else:
@@ -636,30 +658,6 @@ class DataTableStudy(Study):
         
         return pd.Series(deriv_uncert)
     
-    def _calculate_propagated_uncertainty(self, name: str) -> pd.Series:
-        """Calculate propagated uncertainty for a calculated column.
-        
-        Uses symbolic differentiation to compute: δf = √(Σ(∂f/∂xᵢ · δxᵢ)²)
-        
-        Args:
-            name: Calculated column name
-            
-        Returns:
-            Series of propagated uncertainties
-        """
-        meta = self.column_metadata.get(name)
-        if not meta or meta.get("type") != ColumnType.CALCULATED:
-            return pd.Series([np.nan] * len(self.table.data))
-        
-        formula = meta.get("formula")
-        if not formula:
-            return pd.Series([np.nan] * len(self.table.data))
-        
-        # Extract dependencies from formula
-        dependencies = self.formula_engine.extract_dependencies(formula)
-        
-        # Collect values and uncertainties for each dependency
-        values = {}
     def _recalculate_uncertainty(self, column_name: str):
         """Recalculate uncertainty for a column using propagation.
         
@@ -724,7 +722,16 @@ class DataTableStudy(Study):
             if uncert_col_name:
                 uncertainties[dep] = self.table.get_column(uncert_col_name)
             else:
-                uncertainties[dep] = pd.Series([0.0] * len(self.table.data))
+                # Check if this is a derivative column - calculate uncertainty on-the-fly
+                dep_meta = self.column_metadata.get(dep, {})
+                if dep_meta.get("type") == ColumnType.DERIVATIVE:
+                    try:
+                        deriv_uncert = self._calculate_derivative_uncertainty(dep)
+                        uncertainties[dep] = deriv_uncert
+                    except Exception:
+                        uncertainties[dep] = pd.Series([0.0] * len(self.table.data))
+                else:
+                    uncertainties[dep] = pd.Series([0.0] * len(self.table.data))
         
         # Use extracted uncertainty propagator
         workspace_constants = self.workspace.constants if self.workspace else {}
@@ -893,7 +900,11 @@ class DataTableStudy(Study):
                 base_context[col_name] = result.values
     
     def _get_dependency_levels(self, columns: set) -> List[List[str]]:
-        """Group columns into dependency levels for parallel execution."""
+        """Group columns into dependency levels for parallel execution.
+        
+        Note: Only handles CALCULATED columns with formulas. Use
+        _get_universal_dependency_levels() for mixed column types.
+        """
         levels = []
         remaining = columns.copy()
         
@@ -929,30 +940,97 @@ class DataTableStudy(Study):
         
         return levels
     
+    def _get_universal_dependency_levels(self, columns: set) -> List[List[str]]:
+        """Group ANY column types into dependency levels.
+        
+        Handles CALCULATED, DERIVATIVE, and UNCERTAINTY columns in proper order.
+        This is more robust than _get_dependency_levels() which only handles formulas.
+        
+        Args:
+            columns: Set of column names to organize
+            
+        Returns:
+            List of lists, where each inner list contains columns that can be
+            calculated in parallel (same dependency level)
+        """
+        levels = []
+        remaining = columns.copy()
+        
+        while remaining:
+            # Find columns with no dependencies in remaining set
+            current_level = []
+            for col in list(remaining):
+                if col not in self.column_metadata:
+                    remaining.discard(col)
+                    continue
+                
+                # Get dependencies using unified method
+                deps = self._get_all_dependencies(col)
+                deps_in_remaining = deps & remaining - {col}
+                
+                if not deps_in_remaining:
+                    current_level.append(col)
+            
+            if not current_level:
+                # Circular dependency detected - break arbitrarily
+                # TODO: Add explicit circular dependency detection
+                current_level = [remaining.pop()]
+            else:
+                for col in current_level:
+                    remaining.discard(col)
+            
+            levels.append(current_level)
+        
+        return levels
+    
     def recalculate_all(self):
         """Recalculate all formula and derivative columns in dependency order."""
-        # Recalculate calculated columns
+        # Get all calculated and derivative columns
         calc_columns = [
             name for name, meta in self.column_metadata.items()
             if meta.get("type") == ColumnType.CALCULATED
         ]
-        for col_name in calc_columns:
-            self._recalculate_column(col_name)
-            
-            # Update uncertainty column if it exists
-            if self.column_metadata[col_name].get("propagate_uncertainty"):
-                uncert_name = f"{col_name}_u"
-                if uncert_name in self.column_metadata:
-                    uncert_values = self._calculate_propagated_uncertainty(col_name)
-                    self.table.set_column(uncert_name, uncert_values)
-        
-        # Recalculate derivative columns
         deriv_columns = [
             name for name, meta in self.column_metadata.items()
             if meta.get("type") == ColumnType.DERIVATIVE
         ]
+        
+        # Build dependency map once (calculated columns that depend on derivatives)
+        calc_depends_on_deriv = {}
+        for calc_col in calc_columns:
+            formula = self.column_metadata.get(calc_col, {}).get("formula", "")
+            depends_on = [d for d in deriv_columns if f"{{{d}}}" in formula]
+            if depends_on:
+                calc_depends_on_deriv[calc_col] = depends_on
+        
+        # Recalculate calculated columns that DON'T depend on derivatives
+        for col_name in calc_columns:
+            if col_name not in calc_depends_on_deriv:
+                self._recalculate_column(col_name)
+                
+                # Update uncertainty column if it exists
+                if self.column_metadata[col_name].get("propagate_uncertainty"):
+                    self._recalculate_uncertainty(col_name)
+        
+        # Then recalculate derivative columns
         for col_name in deriv_columns:
             self._calculate_derivative(col_name)
+        
+        # Finally, recalculate calculated columns that depend on derivatives
+        for calc_col, depends_on in calc_depends_on_deriv.items():
+            self._recalculate_column(calc_col)
+            if self.column_metadata[calc_col].get("propagate_uncertainty"):
+                self._recalculate_uncertainty(calc_col)
+        
+        # Recalculate all standalone uncertainty columns (type=UNCERTAINTY with reference)
+        uncertainty_columns = [
+            name for name, meta in self.column_metadata.items()
+            if meta.get("type") == ColumnType.UNCERTAINTY and meta.get("uncertainty_reference")
+        ]
+        for uncert_col in uncertainty_columns:
+            ref_col = self.column_metadata[uncert_col].get("uncertainty_reference")
+            if ref_col:
+                self._recalculate_uncertainty(ref_col)
     
     def on_data_changed(self, column_name: str):
         """Handle data change in a column.
@@ -960,19 +1038,52 @@ class DataTableStudy(Study):
         Args:
             column_name: Changed column name
         """
-        # Get affected columns
-        affected = self.formula_engine.get_calculation_order([column_name])
+        # Get affected CALCULATED columns from formula engine
+        affected_calc = self.formula_engine.get_calculation_order([column_name])
         
-        # Recalculate affected columns
-        for col_name in affected:
+        # Find affected DERIVATIVE columns (derivatives of this column)
+        affected_deriv = [
+            name for name, meta in self.column_metadata.items()
+            if meta.get("type") == ColumnType.DERIVATIVE and meta.get("derivative_of") == column_name
+        ]
+        
+        # Recalculate affected calculated columns
+        for col_name in affected_calc:
             self._recalculate_column(col_name)
             
             # Update uncertainty column if it exists
             if self.column_metadata.get(col_name, {}).get("propagate_uncertainty"):
-                uncert_name = f"{col_name}_u"
-                if uncert_name in self.column_metadata:
-                    uncert_values = self._calculate_propagated_uncertainty(col_name)
-                    self.table.set_column(uncert_name, uncert_values)
+                self._recalculate_uncertainty(col_name)
+        
+        # Recalculate affected derivative columns
+        for col_name in affected_deriv:
+            self._calculate_derivative(col_name)
+            
+            # Check if any calculated columns depend on this derivative
+            for calc_col in affected_calc:
+                formula = self.column_metadata.get(calc_col, {}).get("formula", "")
+                if f"{{{col_name}}}" in formula:
+                    # Already recalculated above
+                    pass
+            
+            # Check for calculated columns that depend on this derivative (not already in affected_calc)
+            deriv_dependents = [
+                calc for calc, meta in self.column_metadata.items()
+                if meta.get("type") == ColumnType.CALCULATED and f"{{{col_name}}}" in meta.get("formula", "")
+                and calc not in affected_calc
+            ]
+            for calc_col in deriv_dependents:
+                self._recalculate_column(calc_col)
+                if self.column_metadata[calc_col].get("propagate_uncertainty"):
+                    self._recalculate_uncertainty(calc_col)
+        
+        # Recalculate uncertainty columns that reference any affected columns
+        all_affected = set(affected_calc) | set(affected_deriv) | {column_name}
+        for uncert_col, uncert_meta in self.column_metadata.items():
+            if uncert_meta.get("type") == ColumnType.UNCERTAINTY:
+                ref_col = uncert_meta.get("uncertainty_reference")
+                if ref_col in all_affected:
+                    self._recalculate_uncertainty(ref_col)
     
     # Variables are managed at workspace level via workspace.constants
     # Access via self.workspace.constants (type="constant")
@@ -1017,20 +1128,76 @@ class DataTableStudy(Study):
     # ========================================================================
     
     def to_dict(self) -> Dict[str, Any]:
-        """Export to dictionary."""
-        base_dict = super().to_dict()
-        base_dict.update({
+        """Export to dictionary.
+        
+        Note: Computed columns (CALCULATED, DERIVATIVE, RANGE, and auto-created 
+        UNCERTAINTY columns) are excluded from serialization as they will be 
+        recalculated on load. Manually created UNCERTAINTY columns with user data 
+        are saved.
+        """
+        # Get base dict but don't save computed column data
+        base_dict = {
+            "name": self.name,
+            "type": self.get_type(),
+            "metadata": self.metadata,
             "column_metadata": self.column_metadata,
-            # Variables are stored at workspace level, not study level
-        })
+        }
+        
+        # Filter data objects to exclude computed columns
+        filtered_data_objects = {}
+        for obj_name, obj in self.data_objects.items():
+            # Create a copy of the data object, excluding computed columns
+            filtered_data = {}
+            for col_name in obj.columns:
+                meta = self.column_metadata.get(col_name, {})
+                col_type = meta.get("type", ColumnType.DATA)
+                
+                # Determine if column should be saved
+                save_column = False
+                if col_type == ColumnType.DATA:
+                    # Always save DATA columns
+                    save_column = True
+                elif col_type == ColumnType.UNCERTAINTY:
+                    # Save manually created uncertainty columns (no uncertainty_reference parent with propagate_uncertainty)
+                    # These are user-entered uncertainty values, not auto-calculated
+                    parent_ref = meta.get("uncertainty_reference")
+                    if parent_ref:
+                        parent_meta = self.column_metadata.get(parent_ref, {})
+                        # Don't save if parent has propagate_uncertainty flag (means it was auto-created)
+                        if not parent_meta.get("propagate_uncertainty"):
+                            save_column = True
+                    else:
+                        # Uncertainty column without parent reference (unusual but save it)
+                        save_column = True
+                # Skip CALCULATED, DERIVATIVE, RANGE - always computed
+                
+                if save_column:
+                    filtered_data[col_name] = obj.data[col_name].tolist()
+            
+            # Create filtered object dict
+            filtered_obj = {
+                "name": obj.name,
+                "data": filtered_data,
+                "metadata": obj.metadata
+            }
+            filtered_data_objects[obj_name] = filtered_obj
+        
+        base_dict["data_objects"] = filtered_data_objects
         return base_dict
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any], workspace=None) -> DataTableStudy:
-        """Create from dictionary."""
+        """Create from dictionary.
+        
+        Restores DATA columns from saved data, then recreates and recalculates
+        all computed columns (CALCULATED, DERIVATIVE, UNCERTAINTY, RANGE).
+        """
         study = cls(name=data["name"], workspace=workspace)
         
-        # Restore table data
+        # Restore metadata first (needed to know column types)
+        study.column_metadata = data.get("column_metadata", {})
+        
+        # Restore table data - only DATA columns are saved
         if "data_objects" in data and "main_table" in data["data_objects"]:
             table_data = data["data_objects"]["main_table"]
             study.table = DataObject.from_dict(
@@ -1039,45 +1206,54 @@ class DataTableStudy(Study):
                 **table_data.get("metadata", {})
             )
         
-        # Restore metadata
-        study.column_metadata = data.get("column_metadata", {})
+        # Get number of rows from existing data
+        num_rows = len(study.table.data) if not study.table.data.empty else 0
         
-        # Variables are managed at workspace level (not restored here)
-        
-        # Rebuild formula engine and register formulas
+        # Recreate computed columns in correct order
+        # 1. Register formulas for calculated columns
         for col_name, meta in study.column_metadata.items():
             if meta.get("type") == ColumnType.CALCULATED and meta.get("formula"):
                 study.formula_engine.register_formula(col_name, meta["formula"])
         
-        # Recalculate all computed columns to ensure fresh data
-        # (calculated columns, derivatives, uncertainties)
+        # 2. Add computed columns (initially empty/NaN)
+        computed_types = [ColumnType.CALCULATED, ColumnType.DERIVATIVE, ColumnType.RANGE, ColumnType.UNCERTAINTY]
         for col_name, meta in study.column_metadata.items():
             col_type = meta.get("type")
-            
-            # Recalculate calculated columns
-            if col_type == ColumnType.CALCULATED and meta.get("formula"):
-                try:
-                    study._recalculate_column(col_name)
-                except Exception:
-                    # If calculation fails on load, leave as-is
-                    pass
-            
-            # Recalculate derivatives
-            elif col_type == ColumnType.DERIVATIVE:
-                try:
-                    study._recalculate_column(col_name)
-                except Exception:
-                    pass
+            if col_type in computed_types and col_name not in study.table.columns:
+                # Add column with NaN values initially
+                study.table.add_column(col_name, [np.nan] * num_rows if num_rows > 0 else [])
         
-        # Recalculate uncertainty columns (must be done after calculated/derivative columns)
+        # 3. Recalculate RANGE columns first (they don't depend on other columns)
+        for col_name, meta in study.column_metadata.items():
+            if meta.get("type") == ColumnType.RANGE:
+                study._generate_range(col_name)
+        
+        # 4. Mark all computed columns as dirty and calculate in dependency order
+        computed_cols = set(
+            col for col, meta in study.column_metadata.items()
+            if meta.get("type") in [ColumnType.CALCULATED, ColumnType.DERIVATIVE]
+        )
+        for col in computed_cols:
+            study.mark_dirty(col)
+        
+        # 5. Calculate in proper dependency order (SINGLE PASS using universal dependency tracking)
+        levels = study._get_universal_dependency_levels(computed_cols)
+        for level in levels:
+            for col_name in level:
+                meta = study.column_metadata[col_name]
+                col_type = meta.get("type")
+                
+                if col_type == ColumnType.CALCULATED:
+                    study._recalculate_column(col_name)
+                elif col_type == ColumnType.DERIVATIVE:
+                    study._calculate_derivative(col_name)
+        
+        # 6. Recalculate uncertainty columns last (depend on parent columns)
         for col_name, meta in study.column_metadata.items():
             if meta.get("type") == ColumnType.UNCERTAINTY:
                 parent_col = meta.get("uncertainty_reference")
                 if parent_col and parent_col in study.column_metadata:
-                    try:
-                        study._recalculate_uncertainty(parent_col)
-                    except Exception:
-                        pass
+                    study._recalculate_uncertainty(parent_col)
         
         return study
     

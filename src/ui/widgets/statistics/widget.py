@@ -308,3 +308,7 @@ class StatisticsWidget(QWidget):
     def refresh(self):
         """Refresh the widget (update column list and redraw)."""
         self._populate_column_selector()
+        # If a column is currently selected and analyzed, re-analyze it
+        col_name = self.column_combo.currentData()
+        if col_name is not None:
+            self._on_analyze_clicked()

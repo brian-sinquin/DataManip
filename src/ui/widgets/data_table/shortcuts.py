@@ -193,16 +193,12 @@ def _paste_tsv(widget, tsv_data: str, start_row: int, start_col: int):
         def undo_paste():
             for (row, col, col_name), old_val in old_values.items():
                 widget.study.table.data.iloc[row, col] = old_val
-            for col_name in affected_columns:
-                widget.study.on_data_changed(col_name)
-            widget.model.layoutChanged.emit()
+            widget._refresh_data(affected_columns)
         
         def redo_paste():
             for (row, col, col_name), new_val in new_values.items():
                 widget.study.table.data.loc[row, col_name] = new_val
-            for col_name in affected_columns:
-                widget.study.on_data_changed(col_name)
-            widget.model.layoutChanged.emit()
+            widget._refresh_data(affected_columns)
         
         cell_count = len(old_values)
         action = UndoAction(
@@ -213,12 +209,8 @@ def _paste_tsv(widget, tsv_data: str, start_row: int, start_col: int):
         )
         widget.study.undo_manager.push(action)
     
-    # Recalculate formulas
-    for col_name in affected_columns:
-        widget.study.on_data_changed(col_name)
-    
-    # Refresh view
-    widget.model.layoutChanged.emit()  # type: ignore
+    # Refresh view (incremental update)
+    widget._refresh_data(affected_columns)
     
     if errors:
         show_warning(widget, "Paste Warnings", f"Some cells could not be pasted:\n" + "\n".join(errors[:5]))
@@ -278,16 +270,12 @@ def _on_delete(widget):
         def undo_delete():
             for (row, col, col_name), old_val in old_values.items():
                 widget.study.table.data.iloc[row, col] = old_val
-            for col_name in affected_columns:
-                widget.study.on_data_changed(col_name)
-            widget.model.layoutChanged.emit()
+            widget._refresh_data(affected_columns)
         
         def redo_delete():
             for (row, col, col_name), _ in old_values.items():
                 widget.study.table.data.loc[row, col_name] = pd.NA
-            for col_name in affected_columns:
-                widget.study.on_data_changed(col_name)
-            widget.model.layoutChanged.emit()
+            widget._refresh_data(affected_columns)
         
         cell_count = len(old_values)
         action = UndoAction(
@@ -298,7 +286,5 @@ def _on_delete(widget):
         )
         widget.study.undo_manager.push(action)
     
-    # Recalculate and refresh
-    for col_name in affected_columns:
-        widget.study.on_data_changed(col_name)
-    widget.model.layoutChanged.emit()  # type: ignore
+    # Refresh view (incremental update)
+    widget._refresh_data(affected_columns)

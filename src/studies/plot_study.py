@@ -245,7 +245,10 @@ class PlotStudy(Study):
             ax.grid(True, alpha=0.3)
         
         if self.legend and self.series:
-            ax.legend()
+            # Only show legend if there are labeled artists
+            handles, labels = ax.get_legend_handles_labels()
+            if handles:
+                ax.legend()
         
         figure.tight_layout()
     

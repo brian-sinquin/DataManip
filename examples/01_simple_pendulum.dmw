@@ -1,0 +1,160 @@
+{
+  "name": "01 - Simple Pendulum",
+  "workspace_type": "numerical",
+  "studies": {
+    "Pendulum Measurements": {
+      "type": "data_table",
+      "data": {
+        "name": "Pendulum Measurements",
+        "type": "data_table",
+        "metadata": {},
+        "column_metadata": {
+          "L": {
+            "type": "data",
+            "formula": null,
+            "unit": "m",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "T": {
+            "type": "data",
+            "formula": null,
+            "unit": "s",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          },
+          "T_squared": {
+            "type": "calculated",
+            "formula": "{T}**2",
+            "unit": "s\u00b2",
+            "uncertainty": null,
+            "derivative_of": null,
+            "with_respect_to": null,
+            "order": 1,
+            "range_type": null,
+            "range_start": null,
+            "range_stop": null,
+            "range_count": null,
+            "range_step": null,
+            "propagate_uncertainty": false,
+            "uncertainty_reference": null
+          }
+        },
+        "data_objects": {
+          "main_table": {
+            "name": "main_table",
+            "data": {
+              "L": [
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+                0.9,
+                1.0,
+                1.1,
+                1.2
+              ],
+              "T": [
+                0.9,
+                1.1,
+                1.27,
+                1.42,
+                1.55,
+                1.68,
+                1.8,
+                1.91,
+                2.01,
+                2.11,
+                2.2
+              ]
+            },
+            "metadata": {}
+          }
+        }
+      }
+    },
+    "Period vs Length": {
+      "type": "plot",
+      "data": {
+        "name": "Period vs Length",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "Simple Pendulum: Period vs Length",
+        "xlabel": "L (m)",
+        "ylabel": "T (s)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Pendulum Measurements",
+            "x_col": "L",
+            "y_col": "T",
+            "label": "Measured Period",
+            "style": "line",
+            "color": "#3498db",
+            "marker": "o",
+            "linestyle": "-",
+            "xerr_col": null,
+            "yerr_col": null
+          }
+        ]
+      }
+    },
+    "T\u00b2 vs L (Linearity)": {
+      "type": "plot",
+      "data": {
+        "name": "T\u00b2 vs L (Linearity)",
+        "type": "plot",
+        "data_objects": {},
+        "metadata": {},
+        "title": "Linearity Check: T\u00b2 \u221d L",
+        "xlabel": "L (m)",
+        "ylabel": "T\u00b2 (s\u00b2)",
+        "grid": true,
+        "legend": true,
+        "series": [
+          {
+            "study": "Pendulum Measurements",
+            "x_col": "L",
+            "y_col": "T_squared",
+            "label": "T\u00b2 vs L",
+            "style": "line",
+            "color": "#e74c3c",
+            "marker": "s",
+            "linestyle": "-",
+            "xerr_col": null,
+            "yerr_col": null
+          }
+        ]
+      }
+    }
+  },
+  "constants": {},
+  "metadata": {
+    "description": "Tutorial: Basic data entry - measuring period vs length for simple pendulum",
+    "version": "0.2.0",
+    "created": "2025-11-24"
+  }
+}

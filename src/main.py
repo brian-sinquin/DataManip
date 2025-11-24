@@ -32,6 +32,13 @@ def main():
     app.setApplicationVersion("0.2.0")
     
     window = MainWindow()
+    
+    # Load workspace from CLI argument if provided
+    if len(sys.argv) > 1:
+        workspace_file = Path(sys.argv[1])
+        if workspace_file.exists() and workspace_file.suffix == ".dmw":
+            window._load_workspace(str(workspace_file))
+    
     window.show()
     
     return app.exec()
