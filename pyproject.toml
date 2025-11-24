@@ -52,7 +52,7 @@ Issues = "https://github.com/brian-sinquin/DataManip/issues"
 Documentation = "https://github.com/brian-sinquin/DataManip#readme"
 
 [project.scripts]
-datamanip = "src.main:main"
+datamanip = "main:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
