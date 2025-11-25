@@ -5,9 +5,31 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 import threading
 
+try:
+    from importlib.resources import files
+except ImportError:
+    # Python < 3.9 fallback
+    import importlib_resources
+    files = importlib_resources.files
 
-# Path to language files
-LANG_DIR = Path(__file__).parent.parent.parent / "assets" / "lang"
+
+def get_language_dir() -> Path:
+    """Get the language directory path."""
+    try:
+        # Try importlib.resources for installed package
+        lang_path = Path(str(files('core').joinpath('assets', 'lang')))
+        # Check if it actually exists (dev mode vs installed)
+        if lang_path.exists():
+            return lang_path
+    except Exception:
+        pass
+    
+    # Fallback to development path (repo root / assets / lang)
+    return Path(__file__).parent.parent.parent / "assets" / "lang"
+
+
+# Initialize LANG_DIR at module level
+LANG_DIR = get_language_dir()
 
 
 class LanguageManager:

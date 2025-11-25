@@ -258,11 +258,6 @@ class MainWindow(QMainWindow):
         example_09.triggered.connect(lambda: self._load_example_workspace("09_spring_mass_shm.dmw"))
         complete_menu.addAction(example_09)
         
-        example_10 = QAction("10 - Atwood Machine", self)
-        example_10.setToolTip("Complete: Dynamics with full error analysis")
-        example_10.triggered.connect(lambda: self._load_example_workspace("10_atwood_machine.dmw"))
-        complete_menu.addAction(example_10)
-        
         # Tools menu
         tools_menu = menubar.addMenu("&Tools")
         
@@ -860,8 +855,18 @@ class MainWindow(QMainWindow):
         Args:
             filename: Name of the example workspace file (e.g., "01_basic_introduction.dmw")
         """
-        # Get path to examples directory
-        examples_dir = Path(__file__).parent.parent.parent / "examples"
+        # Get path to examples directory using importlib.resources
+        try:
+            from importlib.resources import files
+            examples_dir = Path(str(files('core').joinpath('examples')))
+            # Check if it actually exists (dev mode vs installed)
+            if not examples_dir.exists():
+                # Fallback for development mode
+                examples_dir = Path(__file__).parent.parent.parent / "examples"
+        except Exception:
+            # Fallback for development mode
+            examples_dir = Path(__file__).parent.parent.parent / "examples"
+        
         filepath = examples_dir / filename
         
         if not filepath.exists():
